@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ProgressIndicator?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+
+<BorderPane xmlns="http://javafx.com/javafx/25"
+            xmlns:fx="http://javafx.com/fxml"
+            fx:controller="ui.media.MediaLocationsController"
+            styleClass="javdb-root">
+    <center>
+        <VBox spacing="8">
+            <padding>
+                <Insets top="12" right="12" bottom="12" left="12"/>
+            </padding>
+            <Label fx:id="emptyStateLabel" wrapText="true" styleClass="empty-state"/>
+            <Button fx:id="emptyAddFolderButton" text="Add Media Location"/>
+            <TableView fx:id="locationsTable" editable="true" VBox.vgrow="ALWAYS">
+                <columns>
+                    <TableColumn fx:id="directoryColumn" text="Directory" prefWidth="300"/>
+                    <TableColumn fx:id="enabledColumn" text="Enabled" prefWidth="80"/>
+                    <TableColumn fx:id="recursiveColumn" text="Recursive" prefWidth="90"/>
+                    <TableColumn fx:id="lastScanColumn" text="Last Scan" prefWidth="160"/>
+                    <TableColumn fx:id="statusColumn" text="Status" prefWidth="150"/>
+                    <TableColumn fx:id="newColumn" text="New" prefWidth="70"/>
+                    <TableColumn fx:id="updatedColumn" text="Updated" prefWidth="80"/>
+                    <TableColumn fx:id="unchangedColumn" text="Unchanged" prefWidth="90"/>
+                    <TableColumn fx:id="missingColumn" text="Missing" prefWidth="80"/>
+                    <TableColumn fx:id="failedColumn" text="Failed" prefWidth="70"/>
+                </columns>
+            </TableView>
+            <HBox spacing="8">
+                <Button fx:id="addFolderButton" text="Add Folder"/>
+                <Button fx:id="removeButton" text="Remove"/>
+                <Button fx:id="scanSelectedButton" text="Scan Selected"/>
+                <Button fx:id="scanAllButton" text="Scan All"/>
+                <Button fx:id="cancelScanButton" text="Cancel Scan"/>
+                <Button fx:id="closeButton" text="Close"/>
+            </HBox>
+            <HBox spacing="8">
+                <ProgressIndicator fx:id="scanProgressIndicator"
+                                   prefWidth="18"
+                                   prefHeight="18"
+                                   maxWidth="18"
+                                   maxHeight="18"/>
+                <Label fx:id="phaseLabel"/>
+                <Label fx:id="currentDirectoryLabel"/>
+                <Label fx:id="currentFileLabel"/>
+            </HBox>
+            <Label fx:id="currentFilePathLabel" wrapText="true"/>
+            <HBox spacing="8">
+                <Label text="Location"/>
+                <Label fx:id="locationPositionLabel"/>
+                <Label text="Discovered"/>
+                <Label fx:id="discoveredCountLabel"/>
+                <Label text="Processed"/>
+                <Label fx:id="processedCountLabel"/>
+                <Label text="New"/>
+                <Label fx:id="newCountLabel"/>
+                <Label text="Updated"/>
+                <Label fx:id="updatedCountLabel"/>
+                <Label text="Unchanged"/>
+                <Label fx:id="unchangedCountLabel"/>
+                <Label text="Missing"/>
+                <Label fx:id="missingCountLabel"/>
+                <Label text="Failed"/>
+                <Label fx:id="failedCountLabel"/>
+            </HBox>
+            <Label fx:id="summaryLabel" wrapText="true"/>
+            <Label fx:id="errorLabel" wrapText="true" styleClass="error-label"/>
+        </VBox>
+    </center>
+</BorderPane>

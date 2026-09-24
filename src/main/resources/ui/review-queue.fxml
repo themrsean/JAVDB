@@ -1,0 +1,288 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ListView?>
+<?import javafx.scene.control.Menu?>
+<?import javafx.scene.control.MenuBar?>
+<?import javafx.scene.control.MenuItem?>
+<?import javafx.scene.control.ProgressIndicator?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.SplitPane?>
+<?import javafx.scene.control.Tab?>
+<?import javafx.scene.control.TabPane?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.ColumnConstraints?>
+<?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Priority?>
+<?import javafx.scene.layout.RowConstraints?>
+<?import javafx.scene.layout.VBox?>
+
+<BorderPane xmlns="http://javafx.com/javafx/25"
+            xmlns:fx="http://javafx.com/fxml"
+            fx:controller="ui.review.ReviewQueueController"
+            styleClass="javdb-root">
+    <top>
+        <VBox spacing="8" styleClass="top-bar">
+            <padding>
+                <Insets top="10" right="12" bottom="8" left="12"/>
+            </padding>
+            <MenuBar>
+                <menus>
+                    <Menu text="File">
+                        <items>
+                            <MenuItem fx:id="mediaLocationsMenuItem" text="Media Locations..."/>
+                            <MenuItem fx:id="scanAllMediaLocationsMenuItem" text="Scan All Media Locations"/>
+                        </items>
+                    </Menu>
+                </menus>
+            </MenuBar>
+            <HBox spacing="8" alignment="CENTER_LEFT">
+                <Label text="Database" styleClass="field-label"/>
+                <Label fx:id="databasePathLabel" styleClass="database-path"/>
+                <ProgressIndicator fx:id="loadingIndicator"
+                                   maxWidth="18"
+                                   maxHeight="18"
+                                   prefWidth="18"
+                                   prefHeight="18"/>
+                <Button fx:id="scanMediaButton" text="Scan Media"/>
+            </HBox>
+            <Label fx:id="errorLabel" styleClass="error-label"/>
+            <HBox fx:id="scanResultsNotificationBox"
+                  spacing="8"
+                  alignment="CENTER_LEFT">
+                <Label fx:id="scanResultsNotificationLabel"/>
+                <Button fx:id="refreshMediaQueueButton"
+                        text="Refresh Media Queue"/>
+            </HBox>
+        </VBox>
+    </top>
+    <center>
+        <SplitPane dividerPositions="0.58">
+            <items>
+                <TabPane fx:id="reviewTabs" tabClosingPolicy="UNAVAILABLE">
+                    <tabs>
+                        <Tab fx:id="unassignedMediaTab" text="Unassigned Media">
+                            <content>
+                                <VBox spacing="8" styleClass="queue-pane">
+                                    <padding>
+                                        <Insets top="10" right="10" bottom="10" left="10"/>
+                                    </padding>
+                                    <GridPane hgap="8" vgap="8">
+                                        <columnConstraints>
+                                            <ColumnConstraints percentWidth="16"/>
+                                            <ColumnConstraints percentWidth="34" hgrow="ALWAYS"/>
+                                            <ColumnConstraints percentWidth="16"/>
+                                            <ColumnConstraints percentWidth="34" hgrow="ALWAYS"/>
+                                        </columnConstraints>
+                                        <rowConstraints>
+                                            <RowConstraints/>
+                                            <RowConstraints/>
+                                            <RowConstraints/>
+                                        </rowConstraints>
+
+                                        <Label text="Filename/path contains" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+                                        <TextField fx:id="pathFilterField" promptText="Text" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
+                                        <Label text="Directory" GridPane.rowIndex="0" GridPane.columnIndex="2"/>
+                                        <TextField fx:id="directoryFilterField" promptText="/path/prefix" GridPane.rowIndex="0" GridPane.columnIndex="3"/>
+
+                                        <Label text="Width" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
+                                        <TextField fx:id="widthFilterField" promptText="Exact" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
+                                        <Label text="Height" GridPane.rowIndex="1" GridPane.columnIndex="2"/>
+                                        <TextField fx:id="heightFilterField" promptText="Exact" GridPane.rowIndex="1" GridPane.columnIndex="3"/>
+
+                                        <Label text="Minimum width" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
+                                        <TextField fx:id="minWidthFilterField" promptText="Minimum" GridPane.rowIndex="2" GridPane.columnIndex="1"/>
+                                        <Label text="Minimum height" GridPane.rowIndex="2" GridPane.columnIndex="2"/>
+                                        <TextField fx:id="minHeightFilterField" promptText="Minimum" GridPane.rowIndex="2" GridPane.columnIndex="3"/>
+                                    </GridPane>
+
+                                    <HBox spacing="8" alignment="CENTER_LEFT">
+                                        <Button fx:id="applyFiltersButton" text="Apply"/>
+                                        <Button fx:id="clearFiltersButton" text="Clear"/>
+                                        <Label text="Status on this page"/>
+                                        <ComboBox fx:id="statusFilterComboBox" prefWidth="170"/>
+                                        <Button fx:id="refreshButton" text="Refresh"/>
+                                    </HBox>
+
+                                    <TableView fx:id="queueTable" VBox.vgrow="ALWAYS">
+                                        <columns>
+                                            <TableColumn fx:id="filenameColumn" text="Filename" prefWidth="220"/>
+                                            <TableColumn fx:id="matchStatusColumn" text="Match status" prefWidth="130"/>
+                                            <TableColumn fx:id="titleColumn" text="Proposed title" prefWidth="160"/>
+                                            <TableColumn fx:id="publisherColumn" text="Publisher" prefWidth="120"/>
+                                            <TableColumn fx:id="seriesColumn" text="Series" prefWidth="120"/>
+                                            <TableColumn fx:id="movieColumn" text="Original movie" prefWidth="140"/>
+                                            <TableColumn fx:id="performersColumn" text="Performers" prefWidth="180"/>
+                                            <TableColumn fx:id="resolutionColumn" text="Resolution" prefWidth="95"/>
+                                            <TableColumn fx:id="durationColumn" text="Duration" prefWidth="90"/>
+                                            <TableColumn fx:id="warningCountColumn" text="Warnings" prefWidth="80"/>
+                                        </columns>
+                                    </TableView>
+
+                                    <HBox spacing="8" alignment="CENTER_LEFT">
+                                        <Button fx:id="previousButton" text="Previous"/>
+                                        <Button fx:id="nextButton" text="Next"/>
+                                        <Label text="Page size"/>
+                                        <ComboBox fx:id="pageSizeComboBox" prefWidth="90"/>
+                                    </HBox>
+                                </VBox>
+                            </content>
+                        </Tab>
+                        <Tab fx:id="unverifiedScenesTab" text="Unverified Scenes">
+                            <content>
+                                <VBox spacing="8" styleClass="queue-pane">
+                                    <padding>
+                                        <Insets top="10" right="10" bottom="10" left="10"/>
+                                    </padding>
+                                    <TableView fx:id="unverifiedScenesTable" VBox.vgrow="ALWAYS">
+                                        <columns>
+                                            <TableColumn fx:id="sceneTitleColumn" text="Scene title" prefWidth="220"/>
+                                            <TableColumn fx:id="sceneVerificationStatusColumn" text="Verification" prefWidth="130"/>
+                                            <TableColumn text="Release date" prefWidth="110"/>
+                                            <TableColumn text="Publisher" prefWidth="130"/>
+                                            <TableColumn text="Series" prefWidth="130"/>
+                                            <TableColumn text="Media count" prefWidth="90"/>
+                                        </columns>
+                                    </TableView>
+                                </VBox>
+                            </content>
+                        </Tab>
+                    </tabs>
+                </TabPane>
+
+                <ScrollPane fitToWidth="true" styleClass="details-scroll">
+                    <content>
+                        <VBox spacing="12" styleClass="details-pane">
+                            <padding>
+                                <Insets top="12" right="12" bottom="12" left="12"/>
+                            </padding>
+                            <Label fx:id="detailsPlaceholderLabel"
+                                   text="Select an unassigned media file to inspect parsing, matching, and filename readiness."
+                                   wrapText="true"
+                                   styleClass="empty-state"/>
+
+                            <VBox spacing="4" styleClass="details-section">
+                                <Label text="Media" styleClass="section-heading"/>
+                                <GridPane hgap="8" vgap="6">
+                                    <columnConstraints>
+                                        <ColumnConstraints percentWidth="28"/>
+                                        <ColumnConstraints percentWidth="72" hgrow="ALWAYS"/>
+                                    </columnConstraints>
+                                    <Label text="Media UUID" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+                                    <Label fx:id="mediaIdLabel" wrapText="true" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
+                                    <Label text="Full path" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
+                                    <Label fx:id="fullPathLabel" wrapText="true" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
+                                </GridPane>
+                            </VBox>
+
+                            <VBox spacing="4" styleClass="details-section">
+                                <Label text="Structural Parse" styleClass="section-heading"/>
+                                <GridPane hgap="8" vgap="6">
+                                    <columnConstraints>
+                                        <ColumnConstraints percentWidth="28"/>
+                                        <ColumnConstraints percentWidth="72" hgrow="ALWAYS"/>
+                                    </columnConstraints>
+                                    <Label text="Parse status" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+                                    <Label fx:id="parseStatusLabel" wrapText="true" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
+                                </GridPane>
+                            </VBox>
+
+                            <VBox spacing="4" styleClass="details-section">
+                                <Label text="Matched Interpretation" styleClass="section-heading"/>
+                                <GridPane hgap="8" vgap="6">
+                                    <columnConstraints>
+                                        <ColumnConstraints percentWidth="28"/>
+                                        <ColumnConstraints percentWidth="72" hgrow="ALWAYS"/>
+                                    </columnConstraints>
+                                    <Label text="Match status" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+                                    <Label fx:id="matchStatusLabel" wrapText="true" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
+                                </GridPane>
+                            </VBox>
+
+                            <VBox spacing="4" styleClass="details-section">
+                                <Label text="Canonical Filename" styleClass="section-heading"/>
+                                <GridPane hgap="8" vgap="6">
+                                    <columnConstraints>
+                                        <ColumnConstraints percentWidth="28"/>
+                                        <ColumnConstraints percentWidth="72" hgrow="ALWAYS"/>
+                                    </columnConstraints>
+                                    <Label text="Generation status" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+                                    <Label fx:id="canonicalStatusLabel" wrapText="true" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
+                                    <Label text="Proposed filename" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
+                                    <Label fx:id="proposedFilenameLabel" wrapText="true" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
+                                </GridPane>
+                            </VBox>
+
+                            <VBox spacing="8" styleClass="details-section">
+                                <Label text="Review Editor" styleClass="section-heading"/>
+                                <GridPane hgap="8" vgap="6">
+                                    <columnConstraints>
+                                        <ColumnConstraints percentWidth="28"/>
+                                        <ColumnConstraints percentWidth="72" hgrow="ALWAYS"/>
+                                    </columnConstraints>
+                                    <Label text="Title" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+                                    <TextField fx:id="titleEditorField" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
+                                    <Label text="Release date" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
+                                    <TextField fx:id="releaseDateEditorField" promptText="yyyy-MM-dd" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
+                                    <Label text="Code" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
+                                    <TextField fx:id="codeEditorField" GridPane.rowIndex="2" GridPane.columnIndex="1"/>
+                                    <Label text="Season" GridPane.rowIndex="3" GridPane.columnIndex="0"/>
+                                    <TextField fx:id="seasonEditorField" GridPane.rowIndex="3" GridPane.columnIndex="1"/>
+                                    <Label text="Episode" GridPane.rowIndex="4" GridPane.columnIndex="0"/>
+                                    <TextField fx:id="episodeEditorField" GridPane.rowIndex="4" GridPane.columnIndex="1"/>
+                                    <Label text="Publisher" GridPane.rowIndex="5" GridPane.columnIndex="0"/>
+                                    <HBox spacing="6" GridPane.rowIndex="5" GridPane.columnIndex="1">
+                                        <TextField fx:id="publisherSearchField" HBox.hgrow="ALWAYS"/>
+                                        <Button fx:id="createPublisherButton" text="Create"/>
+                                    </HBox>
+                                    <ListView fx:id="publisherSuggestionsList" prefHeight="70" GridPane.rowIndex="6" GridPane.columnIndex="1"/>
+                                    <Label text="Series" GridPane.rowIndex="7" GridPane.columnIndex="0"/>
+                                    <HBox spacing="6" GridPane.rowIndex="7" GridPane.columnIndex="1">
+                                        <TextField fx:id="seriesSearchField" HBox.hgrow="ALWAYS"/>
+                                        <Button fx:id="createSeriesButton" text="Create"/>
+                                    </HBox>
+                                    <ListView fx:id="seriesSuggestionsList" prefHeight="70" GridPane.rowIndex="8" GridPane.columnIndex="1"/>
+                                    <Label text="Original movie" GridPane.rowIndex="9" GridPane.columnIndex="0"/>
+                                    <HBox spacing="6" GridPane.rowIndex="9" GridPane.columnIndex="1">
+                                        <TextField fx:id="movieSearchField" HBox.hgrow="ALWAYS"/>
+                                        <Button fx:id="createMovieButton" text="Create"/>
+                                    </HBox>
+                                    <ListView fx:id="movieSuggestionsList" prefHeight="70" GridPane.rowIndex="10" GridPane.columnIndex="1"/>
+                                    <Label text="Performer search" GridPane.rowIndex="11" GridPane.columnIndex="0"/>
+                                    <HBox spacing="6" GridPane.rowIndex="11" GridPane.columnIndex="1">
+                                        <TextField fx:id="performerSearchField" HBox.hgrow="ALWAYS"/>
+                                        <Button fx:id="createPerformerButton" text="Create"/>
+                                    </HBox>
+                                    <ListView fx:id="performerSuggestionsList" prefHeight="70" GridPane.rowIndex="12" GridPane.columnIndex="1"/>
+                                </GridPane>
+                                <Label text="Selected performers"/>
+                                <ListView fx:id="selectedPerformersList" prefHeight="90"/>
+                                <Label text="Alternative interpretations"/>
+                                <ListView fx:id="alternativesList" prefHeight="90"/>
+                                <Button fx:id="applyInterpretationButton" text="Apply Interpretation"/>
+                                <Label fx:id="editorValidationLabel" styleClass="error-label"/>
+                                <Label fx:id="editorResultLabel"/>
+                                <HBox spacing="8">
+                                    <Button fx:id="saveWithoutRenameButton" text="Save Without Rename"/>
+                                    <Button fx:id="saveAndRenameButton" text="Save and Rename"/>
+                                    <Button fx:id="saveNeedsReviewButton" text="Save as Needs Review"/>
+                                </HBox>
+                                <HBox spacing="8">
+                                    <Button fx:id="skipButton" text="Skip"/>
+                                    <Button fx:id="resetChangesButton" text="Reset Changes"/>
+                                </HBox>
+                            </VBox>
+                        </VBox>
+                    </content>
+                </ScrollPane>
+            </items>
+        </SplitPane>
+    </center>
+</BorderPane>

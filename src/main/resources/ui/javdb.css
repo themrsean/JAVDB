@@ -1,0 +1,37 @@
+.javdb-root {
+    -fx-font-size: 13px;
+}
+
+.top-bar {
+    -fx-background-color: -fx-control-inner-background;
+    -fx-border-color: -fx-box-border;
+    -fx-border-width: 0 0 1 0;
+}
+
+.field-label,
+.section-heading {
+    -fx-font-weight: bold;
+}
+
+.database-path {
+    -fx-text-fill: -fx-text-inner-color;
+}
+
+.error-label {
+    -fx-text-fill: #b3261e;
+}
+
+.queue-pane,
+.details-pane {
+    -fx-background-color: -fx-background;
+}
+
+.details-section {
+    -fx-padding: 8;
+    -fx-border-color: -fx-box-border;
+    -fx-border-radius: 4;
+}
+
+.empty-state {
+    -fx-text-fill: -fx-mid-text-color;
+}

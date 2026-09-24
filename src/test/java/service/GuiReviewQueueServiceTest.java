@@ -1,0 +1,323 @@
+package service;
+
+import database.DatabaseManager;
+import database.SchemaManager;
+import media.FilenameGenerationStatus;
+import media.MediaFilenameParser;
+import model.MediaFile;
+import model.Performer;
+import model.PerformerCategory;
+import model.Publisher;
+import model.Scene;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
+import repository.EntitySuggestionRepository;
+import repository.MediaAssignmentRepository;
+import repository.MediaFileRepository;
+import repository.PerformerRepository;
+import repository.PublisherRepository;
+import repository.SceneRepository;
+import repository.UnassignedMediaFilter;
+
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.time.Duration;
+import java.util.List;
+import java.util.UUID;
+
+class GuiReviewQueueServiceTest {
+    private static final String DATABASE_FILE_NAME =
+            "gui-review-queue-service-test.db";
+    private static final UUID PUBLISHER_ID =
+            UUID.fromString("11111111-fafa-1111-fafa-111111111111");
+    private static final UUID PERFORMER_ID =
+            UUID.fromString("22222222-fafa-2222-fafa-222222222222");
+    private static final UUID READY_MEDIA_ID =
+            UUID.fromString("33333333-fafa-3333-fafa-333333333333");
+    private static final UUID INVALID_MEDIA_ID =
+            UUID.fromString("44444444-fafa-4444-fafa-444444444444");
+    private static final UUID ASSIGNED_MEDIA_ID =
+            UUID.fromString("55555555-fafa-5555-fafa-555555555555");
+    private static final UUID CONFLICT_MEDIA_ID =
+            UUID.fromString("66666666-fafa-6666-fafa-666666666666");
+    private static final UUID SCENE_ID =
+            UUID.fromString("77777777-fafa-7777-fafa-777777777777");
+    private static final long FILE_SIZE = 1_234L;
+    private static final int WIDTH = 1_920;
+    private static final int HEIGHT = 1_080;
+    private static final long LAST_MODIFIED = 9_876L;
+
+    @TempDir
+    Path temporaryDirectory;
+
+    private MediaFileRepository mediaFileRepository;
+    private GuiReviewQueueService service;
+    private Path mediaDirectory;
+
+    @BeforeEach
+    void initializeDatabase() throws Exception {
+        final DatabaseManager databaseManager = new DatabaseManager(
+                temporaryDirectory.resolve(DATABASE_FILE_NAME)
+        );
+        new SchemaManager(databaseManager).initialize();
+
+        mediaDirectory = temporaryDirectory.resolve("incoming");
+        Files.createDirectories(mediaDirectory);
+        mediaFileRepository = new MediaFileRepository(databaseManager);
+        final MediaAssignmentRepository assignmentRepository =
+                new MediaAssignmentRepository(databaseManager);
+        final SceneRepository sceneRepository =
+                new SceneRepository(databaseManager);
+        service = new GuiReviewQueueService(
+                new MediaFilenameIndexingService(
+                        mediaFileRepository,
+                        assignmentRepository,
+                        new MediaFilenameParser(),
+                        new FilenameMetadataMatcher(
+                                new EntitySuggestionRepository(databaseManager)
+                        )
+                ),
+                mediaFileRepository
+        );
+
+        final Publisher publisher =
+                new Publisher(PUBLISHER_ID, "Studio", List.of("Alias"));
+        final Performer performer = new Performer(
+                PERFORMER_ID,
+                "Performer One",
+                List.of("P Alias"),
+                PerformerCategory.ACTOR
+        );
+        new PublisherRepository(databaseManager).insert(publisher);
+        new PerformerRepository(databaseManager).insert(performer);
+
+        final MediaFile ready = mediaFile(
+                READY_MEDIA_ID,
+                mediaDirectory.resolve(
+                        "(25.01.02) Alias - Scene Title - Performer One.mp4"
+                ),
+                WIDTH,
+                HEIGHT
+        );
+        final MediaFile invalid = mediaFile(
+                INVALID_MEDIA_ID,
+                mediaDirectory.resolve(
+                        "Studio - Scene Title - Performer One.mkv"
+                ),
+                640,
+                360
+        );
+        final MediaFile assigned = mediaFile(
+                ASSIGNED_MEDIA_ID,
+                mediaDirectory.resolve(
+                        "(25.01.03) Studio - Assigned Title - Performer One.mp4"
+                ),
+                WIDTH,
+                HEIGHT
+        );
+        final MediaFile conflict = mediaFile(
+                CONFLICT_MEDIA_ID,
+                mediaDirectory.resolve(
+                        "(25.01.02) Studio - Scene Title - Performer One.mp4"
+                ),
+                WIDTH,
+                HEIGHT
+        );
+        mediaFileRepository.insert(ready);
+        mediaFileRepository.insert(invalid);
+        mediaFileRepository.insert(assigned);
+        mediaFileRepository.insert(conflict);
+        sceneRepository.insert(new Scene(
+                SCENE_ID,
+                "Assigned",
+                publisher,
+                null,
+                null,
+                null,
+                null,
+                null,
+                List.of(performer),
+                List.of(assigned)
+        ));
+
+        Files.writeString(ready.getPath(), "ready");
+        Files.writeString(conflict.getPath(), "conflict");
+    }
+
+    @Test
+    @DisplayName("Unassigned queue excludes assigned media")
+    void unassignedQueueExcludesAssignedMedia() throws Exception {
+        final ReviewQueuePage page = service.loadPage(
+                ReviewQueueFilter.firstPage()
+        );
+
+        Assertions.assertAll(
+                () -> Assertions.assertTrue(page.items().stream()
+                        .anyMatch(item -> READY_MEDIA_ID.equals(item.mediaId()))),
+                () -> Assertions.assertFalse(page.items().stream()
+                        .anyMatch(item -> ASSIGNED_MEDIA_ID.equals(item.mediaId())))
+        );
+    }
+
+    @Test
+    @DisplayName("Filters and paging are applied")
+    void filtersAndPagingAreApplied() throws Exception {
+        final ReviewQueuePage pathPage = service.loadPage(new ReviewQueueFilter(
+                "Scene Title",
+                null,
+                null,
+                null,
+                null,
+                null,
+                UnassignedMediaFilter.DEFAULT_LIMIT,
+                0,
+                ReviewMatchStatusFilter.ALL
+        ));
+        final ReviewQueuePage dimensionPage = service.loadPage(
+                new ReviewQueueFilter(
+                        null,
+                        mediaDirectory,
+                        WIDTH,
+                        HEIGHT,
+                        WIDTH,
+                        HEIGHT,
+                        1,
+                        1,
+                        ReviewMatchStatusFilter.ALL
+                )
+        );
+
+        Assertions.assertAll(
+                () -> Assertions.assertFalse(pathPage.items().isEmpty()),
+                () -> Assertions.assertEquals(1, dimensionPage.items().size())
+        );
+    }
+
+    @Test
+    @DisplayName("Queue item contains summary fields")
+    void queueItemContainsSummaryFields() throws Exception {
+        final ReviewQueueItem item = service.loadPage(
+                ReviewQueueFilter.firstPage()
+        ).items().stream()
+                .filter(row -> READY_MEDIA_ID.equals(row.mediaId()))
+                .findFirst()
+                .orElseThrow();
+
+        Assertions.assertAll(
+                () -> Assertions.assertEquals("Performer One",
+                        item.performers()),
+                () -> Assertions.assertEquals("1920x1080",
+                        item.resolution()),
+                () -> Assertions.assertEquals("Scene Title",
+                        item.proposedTitle()),
+                () -> Assertions.assertEquals(FilenameMatchStatus.READY,
+                        item.matchStatus())
+        );
+    }
+
+    @Test
+    @DisplayName("Details contain media metadata and parse data")
+    void detailsContainMediaMetadataAndParseData() throws Exception {
+        final ReviewDetails details = service.loadPage(
+                ReviewQueueFilter.firstPage()
+        ).details().stream()
+                .filter(detail -> READY_MEDIA_ID.equals(detail.mediaId()))
+                .findFirst()
+                .orElseThrow();
+
+        Assertions.assertAll(
+                () -> Assertions.assertEquals(FILE_SIZE, details.fileSize()),
+                () -> Assertions.assertEquals(LAST_MODIFIED,
+                        details.lastModifiedMillis()),
+                () -> Assertions.assertEquals("Scene Title",
+                        details.proposedTitle()),
+                () -> Assertions.assertEquals(List.of("Performer One"),
+                        details.performerCandidates()),
+                () -> Assertions.assertEquals(FilenameMatchStatus.READY,
+                        details.matchStatus()),
+                () -> Assertions.assertFalse(
+                        details.canonicalRename().proposedFilename().isBlank()
+                )
+        );
+    }
+
+    @Test
+    @DisplayName("Invalid filename does not receive guessed canonical filename")
+    void invalidFilenameDoesNotReceiveGuessedCanonicalFilename()
+            throws Exception {
+
+        final ReviewDetails details = service.loadPage(
+                ReviewQueueFilter.firstPage()
+        ).details().stream()
+                .filter(detail -> INVALID_MEDIA_ID.equals(detail.mediaId()))
+                .findFirst()
+                .orElseThrow();
+
+        Assertions.assertAll(
+                () -> Assertions.assertEquals(
+                        FilenameMatchStatus.INVALID_FILENAME,
+                        details.matchStatus()
+                ),
+                () -> Assertions.assertEquals(
+                        FilenameGenerationStatus.REVIEW_REQUIRED.name(),
+                        details.canonicalRename().status()
+                )
+        );
+    }
+
+    @Test
+    @DisplayName("Destination physical and database conflicts are detected")
+    void destinationPhysicalAndDatabaseConflictsAreDetected() throws Exception {
+        final ReviewDetails details = service.loadPage(
+                ReviewQueueFilter.firstPage()
+        ).details().stream()
+                .filter(detail -> READY_MEDIA_ID.equals(detail.mediaId()))
+                .findFirst()
+                .orElseThrow();
+
+        Assertions.assertAll(
+                () -> Assertions.assertTrue(
+                        details.canonicalRename().physicalDestinationExists()
+                ),
+                () -> Assertions.assertTrue(
+                        details.canonicalRename().databasePathConflict()
+                )
+        );
+    }
+
+    @Test
+    @DisplayName("Service does not modify media records")
+    void serviceDoesNotModifyMediaRecords() throws Exception {
+        final MediaFile before =
+                mediaFileRepository.findById(READY_MEDIA_ID).orElseThrow();
+
+        service.loadPage(ReviewQueueFilter.firstPage());
+
+        final MediaFile after =
+                mediaFileRepository.findById(READY_MEDIA_ID).orElseThrow();
+
+        Assertions.assertAll(
+                () -> Assertions.assertEquals(before.getPath(), after.getPath()),
+                () -> Assertions.assertEquals(before.getFileSize(),
+                        after.getFileSize()),
+                () -> Assertions.assertEquals(before.getLastModifiedMillis(),
+                        after.getLastModifiedMillis())
+        );
+    }
+
+    private MediaFile mediaFile(UUID id, Path path, int width, int height) {
+        return new MediaFile(
+                id,
+                path,
+                FILE_SIZE,
+                null,
+                Duration.ofMillis(1_000L),
+                width,
+                height,
+                LAST_MODIFIED
+        );
+    }
+}

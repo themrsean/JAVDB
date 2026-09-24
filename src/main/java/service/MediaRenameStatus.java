@@ -1,0 +1,15 @@
+package service;
+
+public enum MediaRenameStatus {
+    RENAMED,
+    READY,
+    UNCHANGED,
+    REVIEW_REQUIRED,
+    SOURCE_MISSING,
+    DESTINATION_EXISTS,
+    DATABASE_PATH_CONFLICT,
+    INVALID_ASSIGNMENT,
+    INVALID_METADATA,
+    TOO_LONG,
+    FILESYSTEM_FAILURE
+}

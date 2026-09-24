@@ -1,0 +1,41 @@
+plugins {
+    id 'java'
+    id 'application'
+    id 'org.openjfx.javafxplugin' version '0.1.0'
+}
+
+def targetJavaVersion = 25
+def junitVersion = '6.1.0'
+
+repositories {
+    mavenCentral()
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(targetJavaVersion)
+    }
+}
+
+dependencies {
+    implementation 'org.xerial:sqlite-jdbc:3.53.2.0'
+
+    testImplementation 'org.junit.jupiter:junit-jupiter:6.1.0'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher:6.1.0'
+}
+
+javafx {
+    version = '25'
+    modules = [
+            'javafx.controls',
+            'javafx.fxml'
+    ]
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}
+
+application {
+    mainClass = 'app.JAVDBApplication'
+}

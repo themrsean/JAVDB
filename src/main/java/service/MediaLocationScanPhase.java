@@ -1,0 +1,14 @@
+package service;
+
+public enum MediaLocationScanPhase {
+    VALIDATING_LOCATION,
+    DISCOVERING,
+    DISCOVERY_COMPLETED,
+    PROCESSING_FILE,
+    FILE_COMPLETED,
+    PROCESSING,
+    VERIFYING,
+    COMPLETED,
+    CANCELLED,
+    FAILED
+}
