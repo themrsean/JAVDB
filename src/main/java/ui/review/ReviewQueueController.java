@@ -9,10 +9,12 @@ import javafx.scene.control.ListView;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.ProgressIndicator;
 import javafx.scene.control.TabPane;
+import javafx.scene.control.Tab;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.VBox;
 import javafx.scene.control.cell.PropertyValueFactory;
 import model.Movie;
 import model.Performer;
@@ -29,6 +31,12 @@ import service.SceneReviewQueueItem;
 import ui.control.EntityAutocompleteViewModel;
 import ui.control.EntitySuggestionDisplay;
 import ui.media.MediaLocationsWindowLauncher;
+import ui.library.MediaLibraryViewModel;
+import repository.MediaAssignmentReference;
+import repository.MediaLibraryAssignmentState;
+import repository.MediaLibraryMetadataQuality;
+import service.MediaLibraryDetails;
+import service.MediaLibraryRow;
 
 import java.nio.file.Path;
 import java.util.Objects;
@@ -50,6 +58,7 @@ public final class ReviewQueueController {
     private final EntityAutocompleteViewModel performerAutocomplete;
     private final MediaLocationsWindowLauncher mediaLocationsWindowLauncher;
     private final ScanRefreshCoordinator scanRefreshCoordinator;
+    private final MediaLibraryViewModel mediaLibraryViewModel;
     private final Path databasePath;
     private boolean restoringSelection;
 
@@ -195,6 +204,90 @@ public final class ReviewQueueController {
     private TableColumn<SceneReviewQueueItem, String> sceneTitleColumn;
     @FXML
     private TableColumn<SceneReviewQueueItem, String> sceneVerificationStatusColumn;
+    @FXML
+    private Tab mediaLibraryTab;
+    @FXML
+    private VBox reviewDetailsPane;
+    @FXML
+    private VBox mediaLibraryDetailsPane;
+    @FXML
+    private TextField libraryContainsField;
+    @FXML
+    private TextField libraryDirectoryField;
+    @FXML
+    private TextField libraryWidthField;
+    @FXML
+    private TextField libraryHeightField;
+    @FXML
+    private TextField libraryMinWidthField;
+    @FXML
+    private TextField libraryMinHeightField;
+    @FXML
+    private ComboBox<MediaLibraryAssignmentState> libraryAssignmentComboBox;
+    @FXML
+    private ComboBox<MediaLibraryMetadataQuality> libraryQualityComboBox;
+    @FXML
+    private ComboBox<Integer> libraryPageSizeComboBox;
+    @FXML
+    private Button libraryPreviousButton;
+    @FXML
+    private Button libraryNextButton;
+    @FXML
+    private Button libraryApplyButton;
+    @FXML
+    private Button libraryClearButton;
+    @FXML
+    private Button libraryRefreshButton;
+    @FXML
+    private TableView<MediaLibraryRow> mediaLibraryTable;
+    @FXML
+    private TableColumn<MediaLibraryRow, String> libraryFilenameColumn;
+    @FXML
+    private TableColumn<MediaLibraryRow, String> libraryDirectoryColumn;
+    @FXML
+    private TableColumn<MediaLibraryRow, String> libraryResolutionColumn;
+    @FXML
+    private TableColumn<MediaLibraryRow, String> libraryDurationColumn;
+    @FXML
+    private TableColumn<MediaLibraryRow, String> libraryFileSizeColumn;
+    @FXML
+    private TableColumn<MediaLibraryRow, String> libraryModifiedColumn;
+    @FXML
+    private TableColumn<MediaLibraryRow, String> libraryAssignmentColumn;
+    @FXML
+    private Label libraryEmptyLabel;
+    @FXML
+    private Label libraryErrorLabel;
+    @FXML
+    private Label libraryDetailErrorLabel;
+    @FXML
+    private Label libraryMediaIdLabel;
+    @FXML
+    private Label libraryFullPathLabel;
+    @FXML
+    private Label libraryExistsLabel;
+    @FXML
+    private Label libraryFileSizeLabel;
+    @FXML
+    private Label libraryModifiedLabel;
+    @FXML
+    private Label libraryResolutionLabel;
+    @FXML
+    private Label libraryDurationLabel;
+    @FXML
+    private Label libraryHashLabel;
+    @FXML
+    private Label libraryParseStatusLabel;
+    @FXML
+    private Label libraryMatchStatusLabel;
+    @FXML
+    private Label libraryInterpretationLabel;
+    @FXML
+    private ListView<String> librarySceneAssignmentsList;
+    @FXML
+    private ListView<String> libraryMovieAssignmentsList;
+    @FXML
+    private ListView<String> libraryWarningsList;
 
     public ReviewQueueController(
             ReviewQueueViewModel viewModel,
@@ -208,6 +301,7 @@ public final class ReviewQueueController {
             EntityAutocompleteViewModel performerAutocomplete,
             MediaLocationsWindowLauncher mediaLocationsWindowLauncher,
             ScanRefreshCoordinator scanRefreshCoordinator,
+            MediaLibraryViewModel mediaLibraryViewModel,
             Path databasePath) {
 
         this.viewModel = Objects.requireNonNull(
@@ -254,6 +348,10 @@ public final class ReviewQueueController {
                 scanRefreshCoordinator,
                 "Scan refresh coordinator must not be null"
         );
+        this.mediaLibraryViewModel = Objects.requireNonNull(
+                mediaLibraryViewModel,
+                "Media library view model must not be null"
+        );
         this.databasePath = Objects.requireNonNull(
                 databasePath,
                 "Database path must not be null"
@@ -268,17 +366,20 @@ public final class ReviewQueueController {
         bindDetails();
         bindEditor();
         bindAutocomplete();
+        configureMediaLibrary();
         installKeyboardShortcutsWhenReady();
     }
 
     public void loadInitialPage() {
         viewModel.load();
         sceneQueueViewModel.load();
+        mediaLibraryViewModel.load();
     }
 
     public void dispose() {
         viewModel.dispose();
         sceneQueueViewModel.dispose();
+        mediaLibraryViewModel.dispose();
         publisherAutocomplete.dispose();
         seriesAutocomplete.dispose();
         movieAutocomplete.dispose();
@@ -513,6 +614,183 @@ public final class ReviewQueueController {
                 performerAutocomplete,
                 this::selectPerformerSuggestion
         );
+    }
+
+    private void configureMediaLibrary() {
+        libraryFilenameColumn.setCellValueFactory(
+                new PropertyValueFactory<>("filename"));
+        libraryDirectoryColumn.setCellValueFactory(
+                new PropertyValueFactory<>("directory"));
+        libraryResolutionColumn.setCellValueFactory(
+                new PropertyValueFactory<>("resolution"));
+        libraryDurationColumn.setCellValueFactory(
+                new PropertyValueFactory<>("duration"));
+        libraryFileSizeColumn.setCellValueFactory(
+                new PropertyValueFactory<>("fileSize"));
+        libraryModifiedColumn.setCellValueFactory(
+                new PropertyValueFactory<>("lastModified"));
+        libraryAssignmentColumn.setCellValueFactory(
+                new PropertyValueFactory<>("assignmentSummary"));
+        mediaLibraryTable.setItems(mediaLibraryViewModel.rows());
+        mediaLibraryTable.getSelectionModel().selectedItemProperty()
+                .addListener((observable, oldValue, newValue) ->
+                        mediaLibraryViewModel.selectedRow().set(newValue));
+        mediaLibraryViewModel.selectedRow().addListener(
+                (observable, oldValue, newValue) ->
+                        mediaLibraryTable.getSelectionModel().select(newValue));
+
+        libraryContainsField.textProperty().bindBidirectional(
+                mediaLibraryViewModel.containsProperty());
+        libraryDirectoryField.textProperty().bindBidirectional(
+                mediaLibraryViewModel.directoryProperty());
+        libraryWidthField.textProperty().bindBidirectional(
+                mediaLibraryViewModel.widthProperty());
+        libraryHeightField.textProperty().bindBidirectional(
+                mediaLibraryViewModel.heightProperty());
+        libraryMinWidthField.textProperty().bindBidirectional(
+                mediaLibraryViewModel.minWidthProperty());
+        libraryMinHeightField.textProperty().bindBidirectional(
+                mediaLibraryViewModel.minHeightProperty());
+        libraryAssignmentComboBox.getItems().setAll(
+                MediaLibraryAssignmentState.values());
+        libraryAssignmentComboBox.valueProperty().bindBidirectional(
+                mediaLibraryViewModel.assignmentProperty());
+        libraryQualityComboBox.getItems().setAll(
+                MediaLibraryMetadataQuality.values());
+        libraryQualityComboBox.valueProperty().bindBidirectional(
+                mediaLibraryViewModel.qualityProperty());
+        libraryPageSizeComboBox.getItems().setAll(
+                PAGE_SIZE_SMALL, PAGE_SIZE_MEDIUM,
+                PAGE_SIZE_LARGE, PAGE_SIZE_EXTRA_LARGE);
+        libraryPageSizeComboBox.valueProperty().bindBidirectional(
+                mediaLibraryViewModel.pageSizeProperty().asObject());
+
+        libraryApplyButton.setOnAction(event -> libraryAction(
+                mediaLibraryViewModel::applyFilters));
+        libraryClearButton.setOnAction(event -> libraryAction(
+                mediaLibraryViewModel::clearFilters));
+        libraryRefreshButton.setOnAction(event -> libraryAction(
+                mediaLibraryViewModel::load));
+        libraryPreviousButton.setOnAction(event ->
+                mediaLibraryViewModel.previousPage());
+        libraryNextButton.setOnAction(event ->
+                mediaLibraryViewModel.nextPage());
+        libraryPreviousButton.disableProperty().bind(
+                mediaLibraryViewModel.previousAvailableProperty().not()
+                        .or(mediaLibraryViewModel.loadingProperty()));
+        libraryNextButton.disableProperty().bind(
+                mediaLibraryViewModel.nextAvailableProperty().not()
+                        .or(mediaLibraryViewModel.loadingProperty()));
+        libraryErrorLabel.textProperty().bind(
+                mediaLibraryViewModel.errorMessageProperty());
+        libraryEmptyLabel.textProperty().bind(
+                mediaLibraryViewModel.emptyMessageProperty());
+        libraryDetailErrorLabel.textProperty().bind(
+                mediaLibraryViewModel.detailErrorMessageProperty());
+
+        bindMediaLibraryDetails();
+        updateDetailsPane(reviewTabs.getSelectionModel().getSelectedItem());
+        reviewTabs.getSelectionModel().selectedItemProperty().addListener(
+                (observable, oldValue, newValue) -> updateDetailsPane(newValue));
+    }
+
+    private void libraryAction(Runnable action) {
+        try {
+            action.run();
+        } catch (IllegalArgumentException exception) {
+            mediaLibraryViewModel.errorMessageProperty().set(
+                    "Dimension filters must be positive whole numbers."
+            );
+        }
+    }
+
+    private void bindMediaLibraryDetails() {
+        libraryMediaIdLabel.textProperty().bind(Bindings.createStringBinding(
+                () -> libraryDetailText("id"),
+                mediaLibraryViewModel.selectedDetails()));
+        libraryFullPathLabel.textProperty().bind(Bindings.createStringBinding(
+                () -> libraryDetailText("path"),
+                mediaLibraryViewModel.selectedDetails()));
+        libraryExistsLabel.textProperty().bind(Bindings.createStringBinding(
+                () -> libraryDetailText("exists"),
+                mediaLibraryViewModel.selectedDetails()));
+        libraryFileSizeLabel.textProperty().bind(Bindings.createStringBinding(
+                () -> libraryDetailText("size"),
+                mediaLibraryViewModel.selectedDetails()));
+        libraryModifiedLabel.textProperty().bind(Bindings.createStringBinding(
+                () -> libraryDetailText("modified"),
+                mediaLibraryViewModel.selectedDetails()));
+        libraryResolutionLabel.textProperty().bind(Bindings.createStringBinding(
+                () -> libraryDetailText("resolution"),
+                mediaLibraryViewModel.selectedDetails()));
+        libraryDurationLabel.textProperty().bind(Bindings.createStringBinding(
+                () -> libraryDetailText("duration"),
+                mediaLibraryViewModel.selectedDetails()));
+        libraryHashLabel.textProperty().bind(Bindings.createStringBinding(
+                () -> libraryDetailText("hash"),
+                mediaLibraryViewModel.selectedDetails()));
+        libraryParseStatusLabel.textProperty().bind(Bindings.createStringBinding(
+                () -> libraryDetailText("parse"),
+                mediaLibraryViewModel.selectedDetails()));
+        libraryMatchStatusLabel.textProperty().bind(Bindings.createStringBinding(
+                () -> libraryDetailText("match"),
+                mediaLibraryViewModel.selectedDetails()));
+        libraryInterpretationLabel.textProperty().bind(
+                Bindings.createStringBinding(
+                        () -> libraryDetailText("interpretation"),
+                        mediaLibraryViewModel.selectedDetails()));
+        mediaLibraryViewModel.selectedDetails().addListener(
+                (observable, oldValue, newValue) -> {
+                    librarySceneAssignmentsList.getItems().setAll(
+                            assignmentText(newValue == null
+                                    ? java.util.List.of() : newValue.scenes()));
+                    libraryMovieAssignmentsList.getItems().setAll(
+                            assignmentText(newValue == null
+                                    ? java.util.List.of() : newValue.movies()));
+                    libraryWarningsList.getItems().setAll(newValue == null
+                            ? java.util.List.of() : newValue.warnings());
+                });
+    }
+
+    private java.util.List<String> assignmentText(
+            java.util.List<MediaAssignmentReference> references) {
+        return references.isEmpty()
+                ? java.util.List.of("None")
+                : references.stream()
+                        .map(reference -> reference.title() + " — "
+                                + reference.id())
+                        .toList();
+    }
+
+    private String libraryDetailText(String field) {
+        final MediaLibraryDetails details =
+                mediaLibraryViewModel.selectedDetails().get();
+        if (details == null) {
+            return "";
+        }
+        return switch (field) {
+            case "id" -> details.mediaId().toString();
+            case "path" -> details.path().toString();
+            case "exists" -> details.exists() ? "Present" : "Missing from disk";
+            case "size" -> details.fileSize();
+            case "modified" -> details.lastModified();
+            case "resolution" -> details.resolution();
+            case "duration" -> details.duration();
+            case "hash" -> details.contentHash().isBlank()
+                    ? "Not stored" : details.contentHash();
+            case "parse" -> details.parseStatus().toString();
+            case "match" -> details.matchStatus().toString();
+            case "interpretation" -> details.bestInterpretation();
+            default -> "";
+        };
+    }
+
+    private void updateDetailsPane(Tab selectedTab) {
+        final boolean librarySelected = mediaLibraryTab.equals(selectedTab);
+        reviewDetailsPane.setVisible(!librarySelected);
+        reviewDetailsPane.setManaged(!librarySelected);
+        mediaLibraryDetailsPane.setVisible(librarySelected);
+        mediaLibraryDetailsPane.setManaged(librarySelected);
     }
 
     private void installKeyboardShortcutsWhenReady() {

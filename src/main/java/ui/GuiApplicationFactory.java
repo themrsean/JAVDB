@@ -13,6 +13,7 @@ import repository.EntitySuggestionRepository;
 import repository.MediaAssignmentRepository;
 import repository.MediaFileRepository;
 import repository.MediaLocationRepository;
+import repository.MediaLibraryRepository;
 import repository.MovieRepository;
 import repository.PerformerRepository;
 import repository.PublisherRepository;
@@ -26,6 +27,7 @@ import service.GuiReviewQueueService;
 import service.MediaFilenameIndexingService;
 import service.MediaLocationScanService;
 import service.MediaLocationService;
+import service.MediaLibraryService;
 import service.MediaScanService;
 import service.MediaRenameService;
 import service.OriginalMovieSelector;
@@ -45,6 +47,7 @@ import ui.control.EntityAutocompleteViewModel;
 import ui.control.EntitySuggestionDisplay;
 import ui.media.JavaFxMediaLocationsWindowLauncher;
 import ui.media.MediaLocationsViewModel;
+import ui.library.MediaLibraryViewModel;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -92,6 +95,17 @@ public final class GuiApplicationFactory {
         final ReviewQueueViewModel viewModel =
                 new ReviewQueueViewModel(
                         reviewQueueService,
+                        backgroundExecutor,
+                        Platform::runLater
+                );
+        final MediaLibraryViewModel mediaLibraryViewModel =
+                new MediaLibraryViewModel(
+                        new MediaLibraryService(
+                                new MediaLibraryRepository(databaseManager),
+                                mediaFileRepository,
+                                new MediaAssignmentRepository(databaseManager),
+                                indexingService
+                        ),
                         backgroundExecutor,
                         Platform::runLater
                 );
@@ -159,7 +173,8 @@ public final class GuiApplicationFactory {
                 new ScanRefreshCoordinator(
                         () -> editorViewModel.dirtyProperty().get(),
                         this::confirmDiscardChanges,
-                        viewModel::load
+                        viewModel::load,
+                        mediaLibraryViewModel::load
                 );
         final MediaLocationService mediaLocationService =
                 new MediaLocationService(
@@ -246,6 +261,7 @@ public final class GuiApplicationFactory {
                                 mediaLocationsViewModel
                         ),
                         scanRefreshCoordinator,
+                        mediaLibraryViewModel,
                         databaseManager.getDatabasePath()
                 );
 

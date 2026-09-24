@@ -154,6 +154,63 @@
                                 </VBox>
                             </content>
                         </Tab>
+                        <Tab fx:id="mediaLibraryTab" text="Media Library">
+                            <content>
+                                <VBox spacing="8" styleClass="queue-pane">
+                                    <padding>
+                                        <Insets top="10" right="10" bottom="10" left="10"/>
+                                    </padding>
+                                    <GridPane hgap="8" vgap="8">
+                                        <columnConstraints>
+                                            <ColumnConstraints percentWidth="16"/>
+                                            <ColumnConstraints percentWidth="34" hgrow="ALWAYS"/>
+                                            <ColumnConstraints percentWidth="16"/>
+                                            <ColumnConstraints percentWidth="34" hgrow="ALWAYS"/>
+                                        </columnConstraints>
+                                        <Label text="Filename/path contains" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+                                        <TextField fx:id="libraryContainsField" promptText="Text" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
+                                        <Label text="Directory prefix" GridPane.rowIndex="0" GridPane.columnIndex="2"/>
+                                        <TextField fx:id="libraryDirectoryField" promptText="/path/prefix" GridPane.rowIndex="0" GridPane.columnIndex="3"/>
+                                        <Label text="Assignment" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
+                                        <ComboBox fx:id="libraryAssignmentComboBox" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
+                                        <Label text="Metadata quality" GridPane.rowIndex="1" GridPane.columnIndex="2"/>
+                                        <ComboBox fx:id="libraryQualityComboBox" GridPane.rowIndex="1" GridPane.columnIndex="3"/>
+                                        <Label text="Width" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
+                                        <TextField fx:id="libraryWidthField" promptText="Exact" GridPane.rowIndex="2" GridPane.columnIndex="1"/>
+                                        <Label text="Height" GridPane.rowIndex="2" GridPane.columnIndex="2"/>
+                                        <TextField fx:id="libraryHeightField" promptText="Exact" GridPane.rowIndex="2" GridPane.columnIndex="3"/>
+                                        <Label text="Minimum width" GridPane.rowIndex="3" GridPane.columnIndex="0"/>
+                                        <TextField fx:id="libraryMinWidthField" promptText="Minimum" GridPane.rowIndex="3" GridPane.columnIndex="1"/>
+                                        <Label text="Minimum height" GridPane.rowIndex="3" GridPane.columnIndex="2"/>
+                                        <TextField fx:id="libraryMinHeightField" promptText="Minimum" GridPane.rowIndex="3" GridPane.columnIndex="3"/>
+                                    </GridPane>
+                                    <HBox spacing="8" alignment="CENTER_LEFT">
+                                        <Button fx:id="libraryApplyButton" text="Apply"/>
+                                        <Button fx:id="libraryClearButton" text="Clear"/>
+                                        <Button fx:id="libraryRefreshButton" text="Refresh"/>
+                                        <Label text="Page size"/>
+                                        <ComboBox fx:id="libraryPageSizeComboBox" prefWidth="90"/>
+                                    </HBox>
+                                    <Label fx:id="libraryErrorLabel" styleClass="error-label" wrapText="true"/>
+                                    <Label fx:id="libraryEmptyLabel" styleClass="empty-state" wrapText="true"/>
+                                    <TableView fx:id="mediaLibraryTable" VBox.vgrow="ALWAYS">
+                                        <columns>
+                                            <TableColumn fx:id="libraryFilenameColumn" text="Filename" prefWidth="190"/>
+                                            <TableColumn fx:id="libraryDirectoryColumn" text="Directory" prefWidth="220"/>
+                                            <TableColumn fx:id="libraryResolutionColumn" text="Resolution" prefWidth="90"/>
+                                            <TableColumn fx:id="libraryDurationColumn" text="Duration" prefWidth="85"/>
+                                            <TableColumn fx:id="libraryFileSizeColumn" text="File size" prefWidth="90"/>
+                                            <TableColumn fx:id="libraryModifiedColumn" text="Last modified" prefWidth="145"/>
+                                            <TableColumn fx:id="libraryAssignmentColumn" text="Assignment" prefWidth="110"/>
+                                        </columns>
+                                    </TableView>
+                                    <HBox spacing="8" alignment="CENTER_LEFT">
+                                        <Button fx:id="libraryPreviousButton" text="Previous"/>
+                                        <Button fx:id="libraryNextButton" text="Next"/>
+                                    </HBox>
+                                </VBox>
+                            </content>
+                        </Tab>
                     </tabs>
                 </TabPane>
 
@@ -163,6 +220,7 @@
                             <padding>
                                 <Insets top="12" right="12" bottom="12" left="12"/>
                             </padding>
+                            <VBox fx:id="reviewDetailsPane" spacing="12">
                             <Label fx:id="detailsPlaceholderLabel"
                                    text="Select an unassigned media file to inspect parsing, matching, and filename readiness."
                                    wrapText="true"
@@ -278,6 +336,47 @@
                                     <Button fx:id="skipButton" text="Skip"/>
                                     <Button fx:id="resetChangesButton" text="Reset Changes"/>
                                 </HBox>
+                            </VBox>
+                            </VBox>
+                            <VBox fx:id="mediaLibraryDetailsPane" spacing="10" visible="false" managed="false">
+                                <Label text="Selected Media" styleClass="section-heading"/>
+                                <Label text="Select a media record to inspect stored metadata, assignments, and filename analysis."
+                                       styleClass="empty-state" wrapText="true"/>
+                                <Label fx:id="libraryDetailErrorLabel" styleClass="error-label" wrapText="true"/>
+                                <GridPane hgap="8" vgap="6" styleClass="details-section">
+                                    <columnConstraints>
+                                        <ColumnConstraints percentWidth="28"/>
+                                        <ColumnConstraints percentWidth="72" hgrow="ALWAYS"/>
+                                    </columnConstraints>
+                                    <Label text="Media UUID" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+                                    <Label fx:id="libraryMediaIdLabel" wrapText="true" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
+                                    <Label text="Full path" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
+                                    <Label fx:id="libraryFullPathLabel" wrapText="true" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
+                                    <Label text="Filesystem" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
+                                    <Label fx:id="libraryExistsLabel" wrapText="true" GridPane.rowIndex="2" GridPane.columnIndex="1"/>
+                                    <Label text="File size" GridPane.rowIndex="3" GridPane.columnIndex="0"/>
+                                    <Label fx:id="libraryFileSizeLabel" GridPane.rowIndex="3" GridPane.columnIndex="1"/>
+                                    <Label text="Last modified" GridPane.rowIndex="4" GridPane.columnIndex="0"/>
+                                    <Label fx:id="libraryModifiedLabel" GridPane.rowIndex="4" GridPane.columnIndex="1"/>
+                                    <Label text="Resolution" GridPane.rowIndex="5" GridPane.columnIndex="0"/>
+                                    <Label fx:id="libraryResolutionLabel" GridPane.rowIndex="5" GridPane.columnIndex="1"/>
+                                    <Label text="Duration" GridPane.rowIndex="6" GridPane.columnIndex="0"/>
+                                    <Label fx:id="libraryDurationLabel" GridPane.rowIndex="6" GridPane.columnIndex="1"/>
+                                    <Label text="Content hash" GridPane.rowIndex="7" GridPane.columnIndex="0"/>
+                                    <Label fx:id="libraryHashLabel" wrapText="true" GridPane.rowIndex="7" GridPane.columnIndex="1"/>
+                                    <Label text="Parse status" GridPane.rowIndex="8" GridPane.columnIndex="0"/>
+                                    <Label fx:id="libraryParseStatusLabel" GridPane.rowIndex="8" GridPane.columnIndex="1"/>
+                                    <Label text="Match status" GridPane.rowIndex="9" GridPane.columnIndex="0"/>
+                                    <Label fx:id="libraryMatchStatusLabel" GridPane.rowIndex="9" GridPane.columnIndex="1"/>
+                                    <Label text="Best interpretation" GridPane.rowIndex="10" GridPane.columnIndex="0"/>
+                                    <Label fx:id="libraryInterpretationLabel" wrapText="true" GridPane.rowIndex="10" GridPane.columnIndex="1"/>
+                                </GridPane>
+                                <Label text="Scene assignments (name — UUID)"/>
+                                <ListView fx:id="librarySceneAssignmentsList" prefHeight="90"/>
+                                <Label text="Movie assignments (name — UUID)"/>
+                                <ListView fx:id="libraryMovieAssignmentsList" prefHeight="90"/>
+                                <Label text="Parser / matcher warnings"/>
+                                <ListView fx:id="libraryWarningsList" prefHeight="110"/>
                             </VBox>
                         </VBox>
                     </content>

@@ -131,6 +131,39 @@ class ReviewQueueFxmlTest {
         }
     }
 
+    @Test
+    @DisplayName("FXML contains media library filters table and details")
+    void fxmlContainsMediaLibraryControls() throws Exception {
+        final Document document = document();
+        final Set<String> expectedIds = Set.of(
+                "mediaLibraryTab", "mediaLibraryTable",
+                "libraryContainsField", "libraryDirectoryField",
+                "libraryAssignmentComboBox", "libraryQualityComboBox",
+                "libraryWidthField", "libraryHeightField",
+                "libraryMinWidthField", "libraryMinHeightField",
+                "libraryApplyButton", "libraryClearButton",
+                "libraryRefreshButton", "libraryPageSizeComboBox",
+                "libraryPreviousButton", "libraryNextButton",
+                "libraryFilenameColumn", "libraryDirectoryColumn",
+                "libraryResolutionColumn", "libraryDurationColumn",
+                "libraryFileSizeColumn", "libraryModifiedColumn",
+                "libraryAssignmentColumn", "libraryEmptyLabel",
+                "libraryErrorLabel", "mediaLibraryDetailsPane",
+                "libraryMediaIdLabel", "libraryFullPathLabel",
+                "libraryExistsLabel", "libraryFileSizeLabel",
+                "libraryModifiedLabel", "libraryResolutionLabel",
+                "libraryDurationLabel", "libraryHashLabel",
+                "librarySceneAssignmentsList", "libraryMovieAssignmentsList",
+                "libraryParseStatusLabel", "libraryMatchStatusLabel",
+                "libraryInterpretationLabel", "libraryWarningsList"
+        );
+
+        for (String expectedId : expectedIds) {
+            Assertions.assertTrue(hasFxId(document, expectedId),
+                    "Missing fx:id " + expectedId);
+        }
+    }
+
     private Document document() throws Exception {
         final InputStream input =
                 ReviewQueueFxmlTest.class.getResourceAsStream(FXML_RESOURCE);

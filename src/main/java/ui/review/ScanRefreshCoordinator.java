@@ -17,6 +17,7 @@ public final class ScanRefreshCoordinator {
     private final BooleanSupplier dirtySupplier;
     private final ReviewNavigationGuard navigationGuard;
     private final Runnable refreshAction;
+    private final Runnable readOnlyRefreshAction;
     private final BooleanProperty pendingScanResults =
             new SimpleBooleanProperty(false);
     private final StringProperty pendingScanResultsMessage =
@@ -27,6 +28,15 @@ public final class ScanRefreshCoordinator {
             BooleanSupplier discardConfirmation,
             Runnable refreshAction) {
 
+        this(dirtySupplier, discardConfirmation, refreshAction, () -> { });
+    }
+
+    public ScanRefreshCoordinator(
+            BooleanSupplier dirtySupplier,
+            BooleanSupplier discardConfirmation,
+            Runnable refreshAction,
+            Runnable readOnlyRefreshAction) {
+
         this.dirtySupplier = Objects.requireNonNull(
                 dirtySupplier,
                 "Dirty supplier must not be null"
@@ -35,6 +45,10 @@ public final class ScanRefreshCoordinator {
         this.refreshAction = Objects.requireNonNull(
                 refreshAction,
                 "Refresh action must not be null"
+        );
+        this.readOnlyRefreshAction = Objects.requireNonNull(
+                readOnlyRefreshAction,
+                "Read-only refresh action must not be null"
         );
     }
 
@@ -48,6 +62,7 @@ public final class ScanRefreshCoordinator {
 
     public void requestScanRefresh(boolean dataChanged) {
         if (dataChanged) {
+            readOnlyRefreshAction.run();
             if (dirtySupplier.getAsBoolean()) {
                 pendingScanResults.set(true);
                 pendingScanResultsMessage.set(PENDING_MESSAGE);

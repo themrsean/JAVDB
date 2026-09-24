@@ -213,6 +213,8 @@ Unassigned Media
 Unverified Scenes
 ```
 
+The same tab area also includes a read-only `Media Library` for scan review.
+
 Unassigned media rows are for files that need a new scene. Unverified scene rows
 are for existing scenes whose verification status is `UNVERIFIED` or
 `NEEDS_REVIEW`.
@@ -306,6 +308,34 @@ build/install/JAVDB/bin/JAVDB gui --database "/tmp/javdb-gui-smoke/javdb.db"
 Do not omit `--database` during smoke testing unless you intentionally want to
 open the configured default database. The current-page READY batch action is
 still deferred and is not part of this GUI slice.
+
+## Media Library / Scan Review
+
+The `Media Library` tab shows every stored `media_file`, including assigned
+files, so scan results and metadata quality can be inspected without changing
+catalog data. The table displays filename, directory, resolution, duration,
+readable file size, last-modified time, and an assignment summary of
+`Unassigned`, `Scene`, `Movie`, or `Scene + Movie`.
+
+Filters run in SQLite rather than loading the collection into memory. They
+cover filename/full-path text, directory prefix, assignment state, exact and
+minimum dimensions, missing dimensions, and missing duration. Pages use SQL
+limit/offset with the same 25, 50, 100, and 250 row choices as the review
+workflow. `Refresh` reloads the current page; successful scans also refresh the
+library automatically, even when a dirty review draft keeps the editable queue
+refresh pending.
+
+Selecting a row loads its details in the background: UUID, full path, current
+filesystem existence, stored size and modification time, dimensions, duration,
+content hash, scene and movie assignments with names and UUIDs, parse and match
+statuses, best filename interpretation, and parser/matcher warnings. This uses
+the same filename preview and assignment logic as indexing. Missing files and
+uninterpretable filenames are diagnostic states, not errors that alter data.
+
+The Media Library is strictly read-only. It does not edit, delete, reassign, or
+index media, and it does not persist scan history. The READY-page batch action
+remains deferred. Its purpose is to validate what scanning actually stored
+before using the existing review/indexing workflows.
 
 For manual smoke testing without touching the production database, create a
 temporary database outside `data/` and launch:

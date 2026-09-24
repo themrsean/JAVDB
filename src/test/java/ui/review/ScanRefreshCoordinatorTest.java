@@ -161,6 +161,29 @@ class ScanRefreshCoordinatorTest {
         );
     }
 
+    @Test
+    @DisplayName("Changed scan refreshes read-only library without discarding draft")
+    void changedScanRefreshesLibraryWhileProtectingDirtyDraft() {
+        final MutableBoolean dirty = new MutableBoolean(true);
+        final Counter reviewRefreshes = new Counter();
+        final Counter libraryRefreshes = new Counter();
+        final ScanRefreshCoordinator coordinator = new ScanRefreshCoordinator(
+                dirty::value,
+                () -> false,
+                reviewRefreshes::increment,
+                libraryRefreshes::increment
+        );
+
+        coordinator.requestScanRefresh(true);
+
+        Assertions.assertAll(
+                () -> Assertions.assertEquals(0, reviewRefreshes.count),
+                () -> Assertions.assertEquals(1, libraryRefreshes.count),
+                () -> Assertions.assertTrue(
+                        coordinator.pendingScanResultsProperty().get())
+        );
+    }
+
     private static final class MutableBoolean {
         private boolean value;
 
