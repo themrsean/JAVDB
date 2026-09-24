@@ -13,6 +13,8 @@ import java.util.function.BooleanSupplier;
 public final class ScanRefreshCoordinator {
     private static final String PENDING_MESSAGE =
             "New media scan results are available.";
+    private static final String CATALOG_PENDING_MESSAGE =
+            "Performer catalog changes are available.";
 
     private final BooleanSupplier dirtySupplier;
     private final ReviewNavigationGuard navigationGuard;
@@ -70,6 +72,17 @@ public final class ScanRefreshCoordinator {
                 refreshAction.run();
                 clearPending();
             }
+        }
+    }
+
+    public void requestCatalogRefresh() {
+        readOnlyRefreshAction.run();
+        if (dirtySupplier.getAsBoolean()) {
+            pendingScanResults.set(true);
+            pendingScanResultsMessage.set(CATALOG_PENDING_MESSAGE);
+        } else {
+            refreshAction.run();
+            clearPending();
         }
     }
 

@@ -14,6 +14,7 @@ import repository.MediaAssignmentRepository;
 import repository.MediaFileRepository;
 import repository.MediaLocationRepository;
 import repository.MediaLibraryRepository;
+import repository.UnassignedMediaPathRepository;
 import repository.MovieRepository;
 import repository.PerformerRepository;
 import repository.PublisherRepository;
@@ -48,6 +49,9 @@ import ui.control.EntitySuggestionDisplay;
 import ui.media.JavaFxMediaLocationsWindowLauncher;
 import ui.media.MediaLocationsViewModel;
 import ui.library.MediaLibraryViewModel;
+import ui.performer.JavaFxPerformerCandidateWindowLauncher;
+import ui.performer.PerformerCandidateViewModel;
+import ui.performer.PerformerCandidateWindowLauncher;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -202,6 +206,26 @@ public final class GuiApplicationFactory {
                 new EntitySuggestionService(
                         new EntitySuggestionRepository(databaseManager)
                 );
+        final PerformerCandidateWindowLauncher performerCandidateLauncher =
+                new JavaFxPerformerCandidateWindowLauncher(
+                        new PerformerCandidateViewModel(
+                                new service.PerformerCandidateReviewService(
+                                        new UnassignedMediaPathRepository(databaseManager),
+                                        new MediaFilenameParser(),
+                                        new EntitySuggestionRepository(databaseManager),
+                                        entityManagementService
+                                ),
+                                backgroundExecutor,
+                                Platform::runLater,
+                                scanRefreshCoordinator::requestCatalogRefresh
+                        ),
+                        autocomplete(
+                                (query, limit) -> suggestionService
+                                        .suggestPerformers(query, limit).stream()
+                                        .map(EntitySuggestionDisplay::from).toList(),
+                                backgroundExecutor
+                        )
+                );
         final ReviewQueueController controller =
                 new ReviewQueueController(
                         viewModel,
@@ -262,6 +286,7 @@ public final class GuiApplicationFactory {
                         ),
                         scanRefreshCoordinator,
                         mediaLibraryViewModel,
+                        performerCandidateLauncher,
                         databaseManager.getDatabasePath()
                 );
 

@@ -39,6 +39,7 @@
                         <items>
                             <MenuItem fx:id="mediaLocationsMenuItem" text="Media Locations..."/>
                             <MenuItem fx:id="scanAllMediaLocationsMenuItem" text="Scan All Media Locations"/>
+                            <MenuItem fx:id="performerCandidatesMenuItem" text="Review Performer Candidates..."/>
                         </items>
                     </Menu>
                 </menus>

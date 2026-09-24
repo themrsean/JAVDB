@@ -727,6 +727,22 @@ file and requires explicit confirmation before writing READY rows. Creating
 missing database entities during review is intentionally explicit; automatic
 indexing does not guess or create them.
 
+### Performer Candidate Review
+
+`File > Review Performer Candidates...` provides a read-only aggregation of
+performer candidates from structurally valid, currently unassigned filenames.
+Candidates are grouped case-insensitively, with occurrence counts and example
+filenames. The default view focuses unresolved names; exact primary-name and
+alias matches are shown separately.
+
+Creating a performer is an explicit confirmed action and uses category
+`UNKNOWN`. Mapping a candidate to an existing performer is also explicit and
+adds the candidate as an alias only after confirmation; no candidates, aliases,
+or scenes are created simply by opening or refreshing the review. Invalid
+filenames are excluded conservatively. Refreshing performer candidates leaves a
+dirty scene-review draft intact and does not auto-index media. Publisher,
+series, movie bootstrapping and READY-page batch indexing remain deferred.
+
 ## Database Backup And Restore
 
 Do not casually copy an active SQLite database file, especially when WAL mode is

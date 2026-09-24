@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.geometry.Insets?>
+<VBox xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml" fx:controller="ui.performer.PerformerCandidateController" spacing="8" styleClass="javdb-root">
+ <padding><Insets top="12" right="12" bottom="12" left="12"/></padding>
+ <Label text="Candidates are extracted only from structurally valid, currently unassigned filenames. No performer or alias is created until you confirm an action." wrapText="true"/>
+ <HBox spacing="8"><CheckBox fx:id="unresolvedOnlyCheckBox" text="Show unresolved only" selected="true"/><Button fx:id="refreshButton" text="Refresh"/><Button fx:id="createButton" text="Create Performer (UNKNOWN)"/><Button fx:id="mapAliasButton" text="Map as Alias"/></HBox>
+ <HBox spacing="8"><Label text="Existing performer"/><TextField fx:id="performerSearchField" promptText="Search before mapping" HBox.hgrow="ALWAYS"/></HBox>
+ <ListView fx:id="performerSuggestionsList" prefHeight="80"/>
+ <Label fx:id="errorLabel" styleClass="error-label"/><Label fx:id="resultLabel"/><Label fx:id="emptyLabel" text="No performer candidates match this view." styleClass="empty-state"/>
+ <TableView fx:id="candidatesTable" VBox.vgrow="ALWAYS"><columns><TableColumn fx:id="candidateColumn" text="Candidate" prefWidth="180"/><TableColumn fx:id="countColumn" text="Files" prefWidth="70"/><TableColumn fx:id="statusColumn" text="Resolution" prefWidth="165"/><TableColumn fx:id="performerColumn" text="Matched performer" prefWidth="150"/><TableColumn fx:id="examplesColumn" text="Representative filenames" prefWidth="400"/></columns></TableView>
+</VBox>

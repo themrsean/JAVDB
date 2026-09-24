@@ -164,6 +164,12 @@ class ReviewQueueFxmlTest {
         }
     }
 
+    @Test
+    @DisplayName("FXML exposes performer candidate review entry point")
+    void fxmlContainsPerformerCandidateEntryPoint() throws Exception {
+        Assertions.assertTrue(hasFxId(document(), "performerCandidatesMenuItem"));
+    }
+
     private Document document() throws Exception {
         final InputStream input =
                 ReviewQueueFxmlTest.class.getResourceAsStream(FXML_RESOURCE);
