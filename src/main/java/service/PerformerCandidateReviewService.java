@@ -57,6 +57,8 @@ public final class PerformerCandidateReviewService {
         return result.stream().sorted(java.util.Comparator
                 .comparing((PerformerCandidate value) -> value.resolution()
                         == PerformerCandidateResolution.UNRESOLVED ? 0 : 1)
+                .thenComparing(PerformerCandidate::mediaCount,
+                        java.util.Comparator.reverseOrder())
                 .thenComparing(PerformerCandidate::text,
                         String.CASE_INSENSITIVE_ORDER))
                 .toList();
@@ -69,6 +71,15 @@ public final class PerformerCandidateReviewService {
 
     public Performer mapAlias(String candidate, UUID performerId) throws SQLException {
         return entityManagementService.addPerformerAlias(performerId, candidate);
+    }
+    public PerformerCandidateBatchResult createPerformers(List<String> candidates) throws SQLException {
+        int created=0, skipped=0; final List<String> failures=new ArrayList<>();
+        for(String candidate:candidates){
+            try { if(resolve(new Aggregate(candidate)).resolution()!=PerformerCandidateResolution.UNRESOLVED){skipped++;}
+                else {createPerformer(candidate);created++;} }
+            catch(SQLException|IllegalArgumentException exception){failures.add(candidate+": "+exception.getMessage());}
+        }
+        return new PerformerCandidateBatchResult(candidates.size(),created,skipped,failures);
     }
 
     private PerformerCandidate resolve(Aggregate aggregate) throws SQLException {

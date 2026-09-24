@@ -42,6 +42,10 @@ public final class PerformerCandidateViewModel {
     }
     public void create(String candidate) { act(candidate, null, true); }
     public void mapAlias(String candidate, UUID performerId) { act(candidate, performerId, false); }
+    public void createSelected(List<String> candidates) {
+        long request=generation.incrementAndGet(); loading.set(true); error.set("");
+        background.execute(()->{try{var batch=service.createPerformers(candidates);ui.execute(()->{if(!disposed&&request==generation.get()){result.set(batch.summary()+(batch.failures().isEmpty()?"":" "+String.join("; ",batch.failures())));reviewRefresh.run();load();}});}catch(SQLException exception){ui.execute(()->fail(request));}});
+    }
     private void act(String candidate, UUID performerId, boolean create) {
         long request = generation.incrementAndGet(); loading.set(true); error.set("");
         background.execute(() -> { try { if (create) service.createPerformer(candidate); else service.mapAlias(candidate, performerId);

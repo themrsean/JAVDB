@@ -732,7 +732,9 @@ indexing does not guess or create them.
 `File > Review Performer Candidates...` provides a read-only aggregation of
 performer candidates from structurally valid, currently unassigned filenames.
 Candidates are grouped case-insensitively, with occurrence counts and example
-filenames. The default view focuses unresolved names; exact primary-name and
+filenames. The default view focuses unresolved names, ordered by descending
+affected-media count with deterministic name ties; text and minimum-count
+filters operate on the loaded list. Exact primary-name and
 alias matches are shown separately.
 
 Creating a performer is an explicit confirmed action and uses category
@@ -742,6 +744,12 @@ or scenes are created simply by opening or refreshing the review. Invalid
 filenames are excluded conservatively. Refreshing performer candidates leaves a
 dirty scene-review draft intact and does not auto-index media. Publisher,
 series, movie bootstrapping and READY-page batch indexing remain deferred.
+
+Use normal multi-selection and `Create Selected Performers` to explicitly
+create unresolved candidates as `UNKNOWN` performers. Confirmation displays the
+selected count; each candidate is rechecked before creation, processed
+independently, and reported as created, already resolved, or failed. Batch
+creation never creates aliases or indexes media.
 
 ## Database Backup And Restore
 
