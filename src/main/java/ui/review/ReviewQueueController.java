@@ -18,7 +18,6 @@ import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
-import javafx.scene.control.cell.PropertyValueFactory;
 import model.Movie;
 import model.Performer;
 import model.Publisher;
@@ -37,6 +36,7 @@ import service.SceneReviewSaveStatus;
 import service.SceneReviewQueueItem;
 import ui.control.EntityAutocompleteViewModel;
 import ui.control.EntitySuggestionDisplay;
+import ui.control.RecordTableCellValues;
 import ui.media.MediaLocationsWindowLauncher;
 import ui.library.MediaLibraryViewModel;
 import repository.MediaAssignmentReference;
@@ -229,6 +229,14 @@ public final class ReviewQueueController {
     private TableColumn<SceneReviewQueueItem, String> sceneTitleColumn;
     @FXML
     private TableColumn<SceneReviewQueueItem, String> sceneVerificationStatusColumn;
+    @FXML
+    private TableColumn<SceneReviewQueueItem, String> sceneReleaseDateColumn;
+    @FXML
+    private TableColumn<SceneReviewQueueItem, String> scenePublisherColumn;
+    @FXML
+    private TableColumn<SceneReviewQueueItem, String> sceneSeriesColumn;
+    @FXML
+    private TableColumn<SceneReviewQueueItem, Integer> sceneMediaCountColumn;
     @FXML
     private Tab mediaLibraryTab;
     @FXML
@@ -435,41 +443,39 @@ public final class ReviewQueueController {
 
     private void configureTable() {
         filenameColumn.setCellValueFactory(
-                new PropertyValueFactory<>("filename")
-        );
-        matchStatusColumn.setCellValueFactory(
-                new PropertyValueFactory<>("matchStatus")
-        );
+                RecordTableCellValues.string(ReviewQueueItem::filename));
+        matchStatusColumn.setCellValueFactory(RecordTableCellValues.string(item ->
+                item.matchStatus() == null ? "" : item.matchStatus().toString()));
         titleColumn.setCellValueFactory(
-                new PropertyValueFactory<>("proposedTitle")
-        );
+                RecordTableCellValues.string(ReviewQueueItem::proposedTitle));
         publisherColumn.setCellValueFactory(
-                new PropertyValueFactory<>("publisherName")
-        );
+                RecordTableCellValues.string(ReviewQueueItem::publisherName));
         seriesColumn.setCellValueFactory(
-                new PropertyValueFactory<>("seriesTitle")
-        );
+                RecordTableCellValues.string(ReviewQueueItem::seriesTitle));
         movieColumn.setCellValueFactory(
-                new PropertyValueFactory<>("movieTitle")
-        );
+                RecordTableCellValues.string(ReviewQueueItem::movieTitle));
         performersColumn.setCellValueFactory(
-                new PropertyValueFactory<>("performers")
-        );
+                RecordTableCellValues.string(ReviewQueueItem::performers));
         resolutionColumn.setCellValueFactory(
-                new PropertyValueFactory<>("resolution")
-        );
+                RecordTableCellValues.string(ReviewQueueItem::resolution));
         durationColumn.setCellValueFactory(
-                new PropertyValueFactory<>("duration")
-        );
+                RecordTableCellValues.string(ReviewQueueItem::duration));
         warningCountColumn.setCellValueFactory(
-                new PropertyValueFactory<>("warningCount")
-        );
+                RecordTableCellValues.object(ReviewQueueItem::warningCount));
         sceneTitleColumn.setCellValueFactory(
-                new PropertyValueFactory<>("title")
-        );
+                RecordTableCellValues.string(SceneReviewQueueItem::title));
         sceneVerificationStatusColumn.setCellValueFactory(
-                new PropertyValueFactory<>("verificationStatus")
-        );
+                RecordTableCellValues.string(item -> item.verificationStatus() == null
+                        ? "" : item.verificationStatus().toString()));
+        sceneReleaseDateColumn.setCellValueFactory(
+                RecordTableCellValues.string(item -> item.releaseDate() == null
+                        ? "" : item.releaseDate().toString()));
+        scenePublisherColumn.setCellValueFactory(
+                RecordTableCellValues.string(SceneReviewQueueItem::publisherName));
+        sceneSeriesColumn.setCellValueFactory(
+                RecordTableCellValues.string(SceneReviewQueueItem::seriesTitle));
+        sceneMediaCountColumn.setCellValueFactory(
+                RecordTableCellValues.object(SceneReviewQueueItem::mediaCount));
         queueTable.setItems(viewModel.rows());
         unverifiedScenesTable.setItems(sceneQueueViewModel.rows());
         queueTable.getSelectionModel()
@@ -477,7 +483,7 @@ public final class ReviewQueueController {
                 .addListener((observable, oldValue, newValue) ->
                         selectUnassignedRow(oldValue, newValue));
         viewModel.selectedRow().addListener((observable, oldValue, newValue) ->
-                queueTable.getSelectionModel().select(newValue));
+                synchronizeQueueTableSelection(newValue));
         viewModel.selectedDetails().addListener((observable, oldValue, newValue) ->
                 loadEditorDraft(newValue));
         unverifiedScenesTable.getSelectionModel()
@@ -703,19 +709,19 @@ public final class ReviewQueueController {
 
     private void configureMediaLibrary() {
         libraryFilenameColumn.setCellValueFactory(
-                new PropertyValueFactory<>("filename"));
+                RecordTableCellValues.string(MediaLibraryRow::filename));
         libraryDirectoryColumn.setCellValueFactory(
-                new PropertyValueFactory<>("directory"));
+                RecordTableCellValues.string(MediaLibraryRow::directory));
         libraryResolutionColumn.setCellValueFactory(
-                new PropertyValueFactory<>("resolution"));
+                RecordTableCellValues.string(MediaLibraryRow::resolution));
         libraryDurationColumn.setCellValueFactory(
-                new PropertyValueFactory<>("duration"));
+                RecordTableCellValues.string(MediaLibraryRow::duration));
         libraryFileSizeColumn.setCellValueFactory(
-                new PropertyValueFactory<>("fileSize"));
+                RecordTableCellValues.string(MediaLibraryRow::fileSize));
         libraryModifiedColumn.setCellValueFactory(
-                new PropertyValueFactory<>("lastModified"));
+                RecordTableCellValues.string(MediaLibraryRow::lastModified));
         libraryAssignmentColumn.setCellValueFactory(
-                new PropertyValueFactory<>("assignmentSummary"));
+                RecordTableCellValues.string(MediaLibraryRow::assignmentSummary));
         mediaLibraryTable.setItems(mediaLibraryViewModel.rows());
         mediaLibraryTable.getSelectionModel().selectedItemProperty()
                 .addListener((observable, oldValue, newValue) ->
@@ -1062,6 +1068,16 @@ public final class ReviewQueueController {
     private void restoreUnassignedSelection(ReviewQueueItem oldValue) {
         restoringSelection = true;
         queueTable.getSelectionModel().select(oldValue);
+        restoringSelection = false;
+    }
+
+    private void synchronizeQueueTableSelection(ReviewQueueItem item) {
+        restoringSelection = true;
+        if (item == null) {
+            queueTable.getSelectionModel().clearSelection();
+        } else {
+            queueTable.getSelectionModel().select(item);
+        }
         restoringSelection = false;
     }
 

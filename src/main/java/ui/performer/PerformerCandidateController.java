@@ -10,10 +10,10 @@ import javafx.scene.control.ListView;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
-import javafx.scene.control.cell.PropertyValueFactory;
 import service.PerformerCandidate;
 import ui.control.EntityAutocompleteViewModel;
 import ui.control.EntitySuggestionDisplay;
+import ui.control.RecordTableCellValues;
 import java.util.Objects;
 
 public final class PerformerCandidateController {
@@ -34,7 +34,20 @@ public final class PerformerCandidateController {
     private EntitySuggestionDisplay selectedPerformer;
     public PerformerCandidateController(PerformerCandidateViewModel viewModel, EntityAutocompleteViewModel autocomplete) { this.viewModel=Objects.requireNonNull(viewModel);this.autocomplete=Objects.requireNonNull(autocomplete);visible=new FilteredList<>(viewModel.candidates()); }
     @FXML private void initialize() {
-        candidateColumn.setCellValueFactory(new PropertyValueFactory<>("text")); countColumn.setCellValueFactory(new PropertyValueFactory<>("mediaCount")); statusColumn.setCellValueFactory(data->new javafx.beans.property.SimpleStringProperty(data.getValue().resolution().toString())); performerColumn.setCellValueFactory(new PropertyValueFactory<>("performerName")); examplesColumn.setCellValueFactory(data->new javafx.beans.property.SimpleStringProperty(data.getValue().representativePaths().stream().map(path->path.getFileName().toString()).collect(java.util.stream.Collectors.joining(" | "))));
+        candidateColumn.setCellValueFactory(
+                RecordTableCellValues.string(PerformerCandidate::text));
+        countColumn.setCellValueFactory(
+                RecordTableCellValues.object(PerformerCandidate::mediaCount));
+        statusColumn.setCellValueFactory(data ->
+                new javafx.beans.property.SimpleStringProperty(
+                        data.getValue().resolution().toString()));
+        performerColumn.setCellValueFactory(
+                RecordTableCellValues.string(PerformerCandidate::performerName));
+        examplesColumn.setCellValueFactory(data ->
+                new javafx.beans.property.SimpleStringProperty(data.getValue()
+                        .representativePaths().stream()
+                        .map(path -> path.getFileName().toString())
+                        .collect(java.util.stream.Collectors.joining(" | "))));
         candidatesTable.getSelectionModel().setSelectionMode(javafx.scene.control.SelectionMode.MULTIPLE); candidatesTable.setItems(visible); unresolvedOnlyCheckBox.selectedProperty().bindBidirectional(viewModel.unresolvedOnlyProperty()); unresolvedOnlyCheckBox.selectedProperty().addListener((o,a,b)->filter()); candidateFilterField.textProperty().addListener((o,a,b)->filter());minimumCountField.textProperty().addListener((o,a,b)->filter()); filter();
         refreshButton.setOnAction(e->viewModel.load()); createButton.setOnAction(e->create()); mapAliasButton.setOnAction(e->map());createSelectedButton.setOnAction(e->createSelected());
         performerSearchField.textProperty().bindBidirectional(autocomplete.searchTextProperty()); performerSearchField.textProperty().addListener((o,a,b)->autocomplete.search()); performerSuggestionsList.setItems(autocomplete.suggestions()); performerSuggestionsList.getSelectionModel().selectedItemProperty().addListener((o,a,b)->selectedPerformer=b);

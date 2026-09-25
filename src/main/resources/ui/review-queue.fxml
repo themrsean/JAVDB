@@ -156,10 +156,10 @@
                                         <columns>
                                             <TableColumn fx:id="sceneTitleColumn" text="Scene title" prefWidth="220"/>
                                             <TableColumn fx:id="sceneVerificationStatusColumn" text="Verification" prefWidth="130"/>
-                                            <TableColumn text="Release date" prefWidth="110"/>
-                                            <TableColumn text="Publisher" prefWidth="130"/>
-                                            <TableColumn text="Series" prefWidth="130"/>
-                                            <TableColumn text="Media count" prefWidth="90"/>
+                                            <TableColumn fx:id="sceneReleaseDateColumn" text="Release date" prefWidth="110"/>
+                                            <TableColumn fx:id="scenePublisherColumn" text="Publisher" prefWidth="130"/>
+                                            <TableColumn fx:id="sceneSeriesColumn" text="Series" prefWidth="130"/>
+                                            <TableColumn fx:id="sceneMediaCountColumn" text="Media count" prefWidth="90"/>
                                         </columns>
                                     </TableView>
                                 </VBox>

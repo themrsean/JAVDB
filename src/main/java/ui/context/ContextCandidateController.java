@@ -12,7 +12,6 @@ import javafx.scene.control.Label;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
-import javafx.scene.control.cell.PropertyValueFactory;
 import service.ContextCandidate;
 import service.ContextCandidateStatus;
 import service.ContextPublisherEvidence;
@@ -21,6 +20,7 @@ import service.ContextSeriesResolutionService;
 import service.ContextMovieResolutionService;
 import ui.control.EntityAutocompleteViewModel;
 import ui.control.EntitySuggestionDisplay;
+import ui.control.RecordTableCellValues;
 import ui.review.EntityDialogLauncher;
 
 import java.util.Locale;
@@ -81,8 +81,10 @@ public final class ContextCandidateController {
 
     @FXML
     private void initialize() {
-        candidateColumn.setCellValueFactory(new PropertyValueFactory<>("text"));
-        countColumn.setCellValueFactory(new PropertyValueFactory<>("occurrences"));
+        candidateColumn.setCellValueFactory(
+                RecordTableCellValues.string(ContextCandidate::text));
+        countColumn.setCellValueFactory(
+                RecordTableCellValues.object(ContextCandidate::occurrences));
         positionColumn.setCellValueFactory(value -> new SimpleStringProperty(
                 formatCounts(value.getValue().positionCounts())));
         statusColumn.setCellValueFactory(value -> new SimpleStringProperty(

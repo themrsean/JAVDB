@@ -5,14 +5,19 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import service.CanonicalRenameDisplay;
+import service.EditableSceneReviewDraft;
 import service.FilenameMatchStatus;
 import service.ReviewDetails;
 import service.ReviewMatchStatusFilter;
 import service.ReviewQueueFilter;
 import service.ReviewQueueItem;
 import service.ReviewQueuePage;
+import service.SceneReviewDraft;
+import service.SceneReviewMode;
+import model.VerificationStatus;
 
 import java.nio.file.Path;
+import java.time.LocalDate;
 import java.util.ArrayDeque;
 import java.util.List;
 import java.util.UUID;
@@ -70,7 +75,55 @@ class ReviewQueueViewModelTest {
                 () -> Assertions.assertEquals(
                         FIRST_ID,
                         viewModel.selectedRow().get().mediaId()
+                ),
+                () -> Assertions.assertEquals(
+                        FIRST_ID,
+                        viewModel.selectedDetails().get().mediaId()
                 )
+        );
+    }
+
+    @Test
+    @DisplayName("Initial and restored selection load matching editor draft once")
+    void initialAndRestoredSelectionLoadMatchingEditorDraftOnce() {
+        final ReviewQueueViewModel viewModel = viewModel(new SequencedService(
+                rawPage("Raw 20", LocalDate.of(2014, 7, 12)),
+                rawPage("Raw 21", LocalDate.of(2014, 7, 13))));
+        final SceneReviewEditorViewModel editor = new SceneReviewEditorViewModel(
+                request -> null, rawDraftLoader(), Runnable::run, Runnable::run);
+        final java.util.concurrent.atomic.AtomicInteger draftLoads =
+                new java.util.concurrent.atomic.AtomicInteger();
+        viewModel.selectedDetails().addListener((observable, oldValue, details) -> {
+            if (details != null) {
+                draftLoads.incrementAndGet();
+                editor.loadUnassignedDetails(details);
+            }
+        });
+
+        viewModel.load();
+
+        Assertions.assertAll(
+                () -> Assertions.assertEquals(FIRST_ID,
+                        viewModel.selectedRow().get().mediaId()),
+                () -> Assertions.assertEquals(FIRST_ID,
+                        viewModel.selectedDetails().get().mediaId()),
+                () -> Assertions.assertEquals(FIRST_ID,
+                        editor.currentDraft().draft().mediaFileIds().getFirst()),
+                () -> Assertions.assertEquals("Raw 20", editor.titleProperty().get()),
+                () -> Assertions.assertEquals("2014-07-12",
+                        editor.releaseDateTextProperty().get()),
+                () -> Assertions.assertEquals(1, draftLoads.get())
+        );
+
+        viewModel.load();
+
+        Assertions.assertAll(
+                () -> Assertions.assertEquals(FIRST_ID,
+                        viewModel.selectedRow().get().mediaId()),
+                () -> Assertions.assertEquals("Raw 21", editor.titleProperty().get()),
+                () -> Assertions.assertEquals("2014-07-13",
+                        editor.releaseDateTextProperty().get()),
+                () -> Assertions.assertEquals(2, draftLoads.get())
         );
     }
 
@@ -433,6 +486,52 @@ class ReviewQueueViewModelTest {
                         ""
                 )
         );
+    }
+
+    private ReviewQueuePage rawPage(String title, LocalDate releaseDate) {
+        final Path path = Path.of(
+                "/media/(14.07.12) EvilAngel - Raw 20 - Abella Danger.mp4");
+        final ReviewQueueItem item = new ReviewQueueItem(FIRST_ID, path,
+                path.getFileName().toString(), "/media", FilenameMatchStatus.UNRESOLVED,
+                title, "", "", "", "", "", "", "", "", "00:01", 0);
+        final ReviewDetails details = new ReviewDetails(FIRST_ID, path,
+                item.filename(), item.directory(), 1L, 1L, 1920, 1080, "00:01", "",
+                media.FilenameParseStatus.VALID, releaseDate, List.of("EvilAngel"),
+                title, "", "", "", List.of("Abella Danger"), List.of(),
+                List.of("Abella Danger"), "", "", "", "", "", "", null,
+                List.of(), List.of("EvilAngel"), List.of(), List.of(), List.of(),
+                FilenameMatchStatus.UNRESOLVED, new CanonicalRenameDisplay(
+                        "REVIEW_REQUIRED", item.filename(), "", path, false, false,
+                        false, List.of(), "Filename interpretation is not ready."));
+        return new ReviewQueuePage(ReviewQueueFilter.firstPage(), List.of(item),
+                List.of(details), 1);
+    }
+
+    private SceneReviewDraftLoader rawDraftLoader() {
+        return new SceneReviewDraftLoader() {
+            @Override
+            public EditableSceneReviewDraft fromReviewDetails(ReviewDetails details) {
+                return new EditableSceneReviewDraft(new SceneReviewDraft(
+                        SceneReviewMode.CREATE_FROM_MEDIA, null, List.of(details.mediaId()),
+                        details.proposedTitle(), details.releaseDate(), details.code(),
+                        details.season(), details.episode(), null, null, null, null,
+                        List.of(), VerificationStatus.VERIFIED, List.of()), details.path(), null,
+                        details.matchStatus(), List.of(), details.performerCandidates(),
+                        details.unmatchedPerformers(), null, List.of());
+            }
+
+            @Override
+            public EditableSceneReviewDraft fromExistingScene(UUID sceneId) {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public EditableSceneReviewDraft applyInterpretation(
+                    EditableSceneReviewDraft editable,
+                    service.FilenameInterpretation interpretation) {
+                throw new UnsupportedOperationException();
+            }
+        };
     }
 
     private List<UUID> ids(ObservableList<ReviewQueueItem> rows) {

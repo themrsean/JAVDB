@@ -25,6 +25,7 @@ import repository.UnassignedMediaFilter;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -45,6 +46,8 @@ class GuiReviewQueueServiceTest {
             UUID.fromString("66666666-fafa-6666-fafa-666666666666");
     private static final UUID NO_CONTEXT_MEDIA_ID =
             UUID.fromString("88888888-fafa-8888-fafa-888888888888");
+    private static final UUID UNRESOLVED_MEDIA_ID =
+            UUID.fromString("99999999-fafa-9999-fafa-999999999999");
     private static final UUID SCENE_ID =
             UUID.fromString("77777777-fafa-7777-fafa-777777777777");
     private static final long FILE_SIZE = 1_234L;
@@ -298,6 +301,34 @@ class GuiReviewQueueServiceTest {
                         FilenameGenerationStatus.REVIEW_REQUIRED.name(),
                         details.canonicalRename().status()
                 )
+        );
+    }
+
+    @Test
+    @DisplayName("Unresolved valid filename still exposes title and release date")
+    void unresolvedFilenameExposesStructuralDraftFields() throws Exception {
+        mediaFileRepository.insert(mediaFile(UNRESOLVED_MEDIA_ID,
+                mediaDirectory.resolve(
+                        "(14.07.12) EvilAngel - Raw 20 - Abella Danger.mp4"),
+                WIDTH, HEIGHT));
+
+        final ReviewDetails details = service.loadPage(
+                ReviewQueueFilter.firstPage()).details().stream()
+                .filter(detail -> UNRESOLVED_MEDIA_ID.equals(detail.mediaId()))
+                .findFirst().orElseThrow();
+
+        Assertions.assertAll(
+                () -> Assertions.assertEquals("Raw 20", details.proposedTitle()),
+                () -> Assertions.assertEquals(LocalDate.of(2014, 7, 12),
+                        details.releaseDate()),
+                () -> Assertions.assertEquals(media.FilenameParseStatus.VALID,
+                        details.parseStatus()),
+                () -> Assertions.assertEquals(FilenameMatchStatus.UNRESOLVED,
+                        details.matchStatus()),
+                () -> Assertions.assertTrue(details.publisherResolution().isBlank()),
+                () -> Assertions.assertTrue(details.seriesResolution().isBlank()),
+                () -> Assertions.assertTrue(details.movieResolution().isBlank()),
+                () -> Assertions.assertTrue(details.resolvedPerformerNames().isEmpty())
         );
     }
 

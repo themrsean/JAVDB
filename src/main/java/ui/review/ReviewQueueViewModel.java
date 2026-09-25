@@ -236,12 +236,13 @@ public final class ReviewQueueViewModel {
             final UUID selectedMediaId = selectedRow.get() == null
                     ? null
                     : selectedRow.get().mediaId();
-            rows.setAll(page.items());
             detailByMediaId.clear();
 
             for (ReviewDetails detail : page.details()) {
                 detailByMediaId.put(detail.mediaId(), detail);
             }
+
+            rows.setAll(page.items());
 
             basePageSize.set(page.basePageSize());
             previousAvailable.set(offset.get() > DEFAULT_OFFSET);
@@ -278,6 +279,9 @@ public final class ReviewQueueViewModel {
         }
 
         selectedRow.set(nextSelection);
+        // A TableView can select while its item list changes. Refresh the
+        // matching detail after the lookup map is complete in either case.
+        updateSelectedDetails(nextSelection);
     }
 
     private void updateSelectedDetails(ReviewQueueItem item) {
