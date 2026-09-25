@@ -12,6 +12,7 @@ import java.util.ArrayDeque;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Executor;
+import java.util.concurrent.atomic.AtomicInteger;
 
 class ContextCandidateViewModelTest {
     @Test
@@ -55,6 +56,40 @@ class ContextCandidateViewModelTest {
                         resolved, "beta", false)),
                 () -> Assertions.assertFalse(ContextCandidateController.matchesFilter(
                         unresolved, "beta", false))
+        );
+    }
+
+    @Test
+    void publisherActionsAreAvailableOnlyForUnresolvedCandidates() {
+        Assertions.assertAll(
+                () -> Assertions.assertTrue(ContextCandidateController.canResolvePublisher(
+                        row("unresolved"))),
+                () -> Assertions.assertFalse(ContextCandidateController.canResolvePublisher(
+                        new ContextCandidate("publisher", 1, Map.of(), Map.of(),
+                                ContextCandidateStatus.PUBLISHER_MATCH,
+                                List.of(), List.of()))),
+                () -> Assertions.assertFalse(ContextCandidateController.canResolvePublisher(
+                        new ContextCandidate("multiple", 1, Map.of(), Map.of(),
+                                ContextCandidateStatus.MULTIPLE_ROLE_MATCHES,
+                                List.of(), List.of())))
+        );
+    }
+
+    @Test
+    void publisherCreationRefreshesCandidatesAndCatalogConsumers() {
+        final AtomicInteger loads = new AtomicInteger();
+        final AtomicInteger catalogRefreshes = new AtomicInteger();
+        final ContextCandidateViewModel viewModel = new ContextCandidateViewModel(
+                () -> { loads.incrementAndGet(); return List.of(); }, null,
+                Runnable::run, Runnable::run, catalogRefreshes::incrementAndGet);
+
+        viewModel.publisherCreated();
+
+        Assertions.assertAll(
+                () -> Assertions.assertEquals(1, catalogRefreshes.get()),
+                () -> Assertions.assertEquals(1, loads.get()),
+                () -> Assertions.assertEquals("Publisher created.",
+                        viewModel.resultMessageProperty().get())
         );
     }
 

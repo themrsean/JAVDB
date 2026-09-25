@@ -65,6 +65,27 @@ class EntityEditorDialogViewModelTest {
     }
 
     @Test
+    @DisplayName("Publisher dialog accepts an optional prefilled name")
+    void publisherDialogAcceptsInitialName() {
+        final PublisherEditorDialogViewModel prefilled =
+                new PublisherEditorDialogViewModel(
+                        (name, aliases) -> new Publisher(PUBLISHER_ID, name, aliases),
+                        Runnable::run, Runnable::run, "Suggested Publisher");
+        final PublisherEditorDialogViewModel defaulted =
+                new PublisherEditorDialogViewModel(
+                        (name, aliases) -> new Publisher(PUBLISHER_ID, name, aliases),
+                        Runnable::run, Runnable::run);
+
+        Assertions.assertAll(
+                () -> Assertions.assertEquals("Suggested Publisher",
+                        prefilled.nameProperty().get()),
+                () -> Assertions.assertTrue(prefilled.saveEnabledProperty().get()),
+                () -> Assertions.assertTrue(defaulted.nameProperty().get().isBlank()),
+                () -> Assertions.assertFalse(defaulted.saveEnabledProperty().get())
+        );
+    }
+
+    @Test
     @DisplayName("Performer dialog creates performer")
     void performerDialogCreatesPerformer() {
         final PerformerEditorDialogViewModel viewModel =

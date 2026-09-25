@@ -36,6 +36,15 @@ public final class PublisherEditorDialogViewModel {
             Executor backgroundExecutor,
             Executor uiExecutor) {
 
+        this(creator, backgroundExecutor, uiExecutor, "");
+    }
+
+    public PublisherEditorDialogViewModel(
+            Creator creator,
+            Executor backgroundExecutor,
+            Executor uiExecutor,
+            String initialName) {
+
         this.creator = Objects.requireNonNull(
                 creator,
                 "Publisher creator must not be null"
@@ -48,6 +57,7 @@ public final class PublisherEditorDialogViewModel {
                 uiExecutor,
                 "UI executor must not be null"
         );
+        name.set(initialName == null ? "" : initialName);
         name.addListener((observable, oldValue, newValue) -> validate());
         validate();
     }

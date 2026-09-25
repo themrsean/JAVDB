@@ -63,11 +63,20 @@ public final class JavaFxEntityDialogLauncher implements EntityDialogLauncher {
 
     @Override
     public Optional<Publisher> createPublisher(Window owner) {
+        return createPublisher(owner, "", entityManagementService::createPublisher);
+    }
+
+    @Override
+    public Optional<Publisher> createPublisher(
+            Window owner,
+            String initialName,
+            PublisherEditorDialogViewModel.Creator creator) {
         final PublisherEditorDialogViewModel viewModel =
                 new PublisherEditorDialogViewModel(
-                        entityManagementService::createPublisher,
+                        creator,
                         backgroundExecutor,
-                        Platform::runLater
+                        Platform::runLater,
+                        initialName
                 );
         final TextField nameField = new TextField();
         final TextArea aliasArea = aliasArea();

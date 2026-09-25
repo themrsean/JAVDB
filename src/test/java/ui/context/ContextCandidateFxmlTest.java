@@ -23,7 +23,9 @@ class ContextCandidateFxmlTest {
         for (String id : List.of("candidatesTable", "candidateColumn", "countColumn",
                 "positionColumn", "statusColumn", "matchesColumn", "examplesColumn",
                 "attentionOnlyCheckBox", "candidateFilterField", "refreshButton",
-                "emptyLabel", "errorLabel")) {
+                "createPublisherButton", "mapPublisherAliasButton",
+                "publisherSearchField", "publisherSuggestionsList",
+                "emptyLabel", "errorLabel", "resultLabel")) {
             Assertions.assertTrue(hasFxId(document, id), "Missing fx:id " + id);
         }
     }

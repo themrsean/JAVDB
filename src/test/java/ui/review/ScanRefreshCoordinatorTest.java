@@ -184,6 +184,27 @@ class ScanRefreshCoordinatorTest {
         );
     }
 
+    @Test
+    @DisplayName("Catalog refresh protects a dirty draft while refreshing read-only data")
+    void catalogRefreshProtectsDirtyDraft() {
+        final MutableBoolean dirty = new MutableBoolean(true);
+        final Counter reviewRefreshes = new Counter();
+        final Counter readOnlyRefreshes = new Counter();
+        final ScanRefreshCoordinator coordinator = new ScanRefreshCoordinator(
+                dirty::value, () -> false, reviewRefreshes::increment,
+                readOnlyRefreshes::increment);
+
+        coordinator.requestCatalogRefresh();
+
+        Assertions.assertAll(
+                () -> Assertions.assertEquals(0, reviewRefreshes.count),
+                () -> Assertions.assertEquals(1, readOnlyRefreshes.count),
+                () -> Assertions.assertTrue(coordinator.pendingScanResultsProperty().get()),
+                () -> Assertions.assertEquals("Performer catalog changes are available.",
+                        coordinator.pendingScanResultsMessageProperty().get())
+        );
+    }
+
     private static final class MutableBoolean {
         private boolean value;
 

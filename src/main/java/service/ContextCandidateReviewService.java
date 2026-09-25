@@ -79,6 +79,15 @@ public final class ContextCandidateReviewService implements ContextCandidateSour
                 .toList();
     }
 
+    /** Reuses the review's exact-match semantics immediately before an action. */
+    public ContextCandidateStatus currentStatus(String candidate)
+            throws SQLException {
+        if (candidate == null || candidate.trim().isEmpty()) {
+            throw new IllegalArgumentException("Context candidate must not be blank.");
+        }
+        return resolve(new Aggregate(candidate.trim()), new HashMap<>()).status();
+    }
+
     private ContextCandidate resolve(
             Aggregate aggregate,
             Map<UUID, String> publisherNames) throws SQLException {

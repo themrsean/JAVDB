@@ -229,17 +229,30 @@ public final class GuiApplicationFactory {
                                 backgroundExecutor
                         )
                 );
+        final service.ContextCandidateReviewService contextReviewService =
+                new service.ContextCandidateReviewService(
+                        new UnassignedMediaPathRepository(databaseManager),
+                        new MediaFilenameParser(),
+                        new EntitySuggestionRepository(databaseManager),
+                        new PublisherRepository(databaseManager)
+                );
+        final service.ContextPublisherResolutionService contextPublisherService =
+                new service.ContextPublisherResolutionService(
+                        contextReviewService, entityManagementService);
         final ContextCandidateWindowLauncher contextCandidateLauncher =
                 new JavaFxContextCandidateWindowLauncher(
-                        new ContextCandidateViewModel(
-                                new service.ContextCandidateReviewService(
-                                        new UnassignedMediaPathRepository(databaseManager),
-                                        new MediaFilenameParser(),
-                                        new EntitySuggestionRepository(databaseManager),
-                                        new PublisherRepository(databaseManager)
-                                ),
-                                backgroundExecutor,
-                                Platform::runLater
+                        new ContextCandidateViewModel(contextReviewService,
+                                contextPublisherService, backgroundExecutor,
+                                Platform::runLater,
+                                scanRefreshCoordinator::requestCatalogRefresh),
+                        contextPublisherService,
+                        new JavaFxEntityDialogLauncher(entityManagementService,
+                                suggestionService, backgroundExecutor),
+                        autocomplete(
+                                (query, limit) -> suggestionService
+                                        .suggestPublishers(query, limit).stream()
+                                        .map(EntitySuggestionDisplay::from).toList(),
+                                backgroundExecutor
                         )
                 );
         final ReviewQueueController controller =

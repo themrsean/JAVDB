@@ -5,6 +5,9 @@ import javafx.scene.Scene;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.stage.Window;
+import service.ContextPublisherResolutionService;
+import ui.control.EntityAutocompleteViewModel;
+import ui.review.EntityDialogLauncher;
 
 import java.io.IOException;
 import java.util.Objects;
@@ -12,10 +15,19 @@ import java.util.Objects;
 public final class JavaFxContextCandidateWindowLauncher
         implements ContextCandidateWindowLauncher {
     private final ContextCandidateViewModel viewModel;
+    private final ContextPublisherResolutionService publisherResolutionService;
+    private final EntityDialogLauncher entityDialogLauncher;
+    private final EntityAutocompleteViewModel publisherAutocomplete;
     private Stage stage;
 
-    public JavaFxContextCandidateWindowLauncher(ContextCandidateViewModel viewModel) {
+    public JavaFxContextCandidateWindowLauncher(ContextCandidateViewModel viewModel,
+            ContextPublisherResolutionService publisherResolutionService,
+            EntityDialogLauncher entityDialogLauncher,
+            EntityAutocompleteViewModel publisherAutocomplete) {
         this.viewModel = Objects.requireNonNull(viewModel);
+        this.publisherResolutionService = Objects.requireNonNull(publisherResolutionService);
+        this.entityDialogLauncher = Objects.requireNonNull(entityDialogLauncher);
+        this.publisherAutocomplete = Objects.requireNonNull(publisherAutocomplete);
     }
 
     @Override
@@ -36,7 +48,9 @@ public final class JavaFxContextCandidateWindowLauncher
         final FXMLLoader loader = new FXMLLoader(resource);
         loader.setControllerFactory(type -> {
             if (type.equals(ContextCandidateController.class)) {
-                return new ContextCandidateController(viewModel);
+                return new ContextCandidateController(viewModel,
+                        publisherResolutionService, entityDialogLauncher,
+                        publisherAutocomplete);
             }
             throw new IllegalArgumentException("Unexpected FXML controller");
         });

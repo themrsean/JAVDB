@@ -768,8 +768,17 @@ name; text and attention-only filters apply to the already loaded list.
 Context position is never a role classification, and prefix or substring
 suggestions do not classify a row. Opening, refreshing, filtering, and
 selecting this view creates no entities, aliases, scenes, assignments, or index
-records. Explicit Publisher/Series/Movie creation and alias mapping from this
-evidence remain the next deferred workflow, as does READY-page batch indexing.
+records.
+
+For an unresolved candidate only, `Create Publisher` opens the existing
+Publisher dialog with the candidate prefilled as its proposed primary name; the
+user still explicitly saves it and may edit aliases. `Map as Publisher Alias`
+uses the existing Publisher autocomplete and requires confirmation before adding
+the candidate as an alias. Both actions re-check the exact Publisher/Series/
+Movie status immediately before writing, so stale candidates make no change and
+are refreshed. Neither action infers a Publisher from position, auto-creates a
+catalog record, or indexes media. Series and Movie resolution, plus READY-page
+batch indexing, remain deferred.
 
 ## Database Backup And Restore
 
