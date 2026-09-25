@@ -65,18 +65,32 @@ public final class PerformerCandidateReviewService {
     }
 
     public Performer createPerformer(String candidate) throws SQLException {
+        return createPerformer(candidate, PerformerCategory.UNKNOWN);
+    }
+
+    public Performer createPerformer(String candidate, PerformerCategory category)
+            throws SQLException {
+
         return entityManagementService.createPerformer(candidate, List.of(),
-                PerformerCategory.UNKNOWN);
+                Objects.requireNonNull(category, "Performer category must not be null"));
     }
 
     public Performer mapAlias(String candidate, UUID performerId) throws SQLException {
         return entityManagementService.addPerformerAlias(performerId, candidate);
     }
     public PerformerCandidateBatchResult createPerformers(List<String> candidates) throws SQLException {
+        return createPerformers(candidates, PerformerCategory.UNKNOWN);
+    }
+
+    public PerformerCandidateBatchResult createPerformers(List<String> candidates,
+            PerformerCategory category) throws SQLException {
+
+        Objects.requireNonNull(candidates, "Candidates must not be null");
+        Objects.requireNonNull(category, "Performer category must not be null");
         int created=0, skipped=0; final List<String> failures=new ArrayList<>();
         for(String candidate:candidates){
             try { if(resolve(new Aggregate(candidate)).resolution()!=PerformerCandidateResolution.UNRESOLVED){skipped++;}
-                else {createPerformer(candidate);created++;} }
+                else {createPerformer(candidate, category);created++;} }
             catch(SQLException|IllegalArgumentException exception){failures.add(candidate+": "+exception.getMessage());}
         }
         return new PerformerCandidateBatchResult(candidates.size(),created,skipped,failures);

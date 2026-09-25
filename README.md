@@ -771,9 +771,13 @@ or scenes are created simply by opening or refreshing the review. Invalid
 filenames are excluded conservatively. Refreshing performer candidates leaves a
 dirty scene-review draft intact and does not auto-index media.
 
-Use normal multi-selection and `Create Selected Performers` to explicitly
-create unresolved candidates as `UNKNOWN` performers. Confirmation displays the
-selected count; each candidate is rechecked before creation, processed
+Use the Category dropdown to explicitly choose `ACTRESS`, `ACTOR`, `OTHER`, or
+`UNKNOWN` (the default). Single creation and `Create Selected Performers` use
+that selected category; batch confirmation displays both the count and category.
+Mapping an alias never changes the selected performer's category. `Minimum
+occurrences` is a display-only filter for affected, currently unassigned valid
+filenames; blank means zero and invalid values are rejected visibly rather than
+treated as zero. Each batch candidate is rechecked before creation, processed
 independently, and reported as created, already resolved, or failed. Batch
 creation never creates aliases or indexes media.
 

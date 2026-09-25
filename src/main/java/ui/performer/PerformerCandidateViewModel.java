@@ -6,6 +6,7 @@ import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import model.PerformerCategory;
 import service.PerformerCandidate;
 import service.PerformerCandidateReviewService;
 
@@ -40,17 +41,29 @@ public final class PerformerCandidateViewModel {
         background.execute(() -> { try { List<PerformerCandidate> rows = service.loadCandidates(); ui.execute(() -> apply(request, rows)); }
             catch (SQLException exception) { ui.execute(() -> fail(request)); } });
     }
-    public void create(String candidate) { act(candidate, null, true); }
-    public void mapAlias(String candidate, UUID performerId) { act(candidate, performerId, false); }
-    public void createSelected(List<String> candidates) {
-        long request=generation.incrementAndGet(); loading.set(true); error.set("");
-        background.execute(()->{try{var batch=service.createPerformers(candidates);ui.execute(()->{if(!disposed&&request==generation.get()){result.set(batch.summary()+(batch.failures().isEmpty()?"":" "+String.join("; ",batch.failures())));reviewRefresh.run();load();}});}catch(SQLException exception){ui.execute(()->fail(request));}});
+    public void create(String candidate, PerformerCategory category) {
+        act(candidate, null, category, true);
     }
-    private void act(String candidate, UUID performerId, boolean create) {
+    public void mapAlias(String candidate, UUID performerId) { act(candidate, performerId, false); }
+    public void createSelected(List<String> candidates, PerformerCategory category) {
+        Objects.requireNonNull(category, "Performer category must not be null");
+        long request=generation.incrementAndGet(); loading.set(true); error.set("");
+        background.execute(()->{try{var batch=service.createPerformers(candidates, category);ui.execute(()->{if(!disposed&&request==generation.get()){result.set(batch.summary()+(batch.failures().isEmpty()?"":" "+String.join("; ",batch.failures())));reviewRefresh.run();load();}});}catch(SQLException exception){ui.execute(()->fail(request));}});
+    }
+    private void act(String candidate, UUID performerId, PerformerCategory category,
+            boolean create) {
+
+        if (create) {
+            Objects.requireNonNull(category, "Performer category must not be null");
+        }
         long request = generation.incrementAndGet(); loading.set(true); error.set("");
-        background.execute(() -> { try { if (create) service.createPerformer(candidate); else service.mapAlias(candidate, performerId);
+        background.execute(() -> { try { if (create) service.createPerformer(candidate, category); else service.mapAlias(candidate, performerId);
             ui.execute(() -> { if (!disposed && request == generation.get()) { result.set(create ? "Performer created." : "Alias added."); reviewRefresh.run(); load(); } });
         } catch (SQLException | IllegalArgumentException exception) { ui.execute(() -> { if (!disposed && request == generation.get()) { error.set(exception.getMessage()); loading.set(false); } }); } });
+    }
+
+    private void act(String candidate, UUID performerId, boolean create) {
+        act(candidate, performerId, null, create);
     }
     private void apply(long request, List<PerformerCandidate> rows) { if (!disposed && request == generation.get()) { candidates.setAll(rows); loading.set(false); } }
     private void fail(long request) { if (!disposed && request == generation.get()) { error.set("Unable to load performer candidates."); loading.set(false); } }
