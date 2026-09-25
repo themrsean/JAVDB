@@ -22,5 +22,12 @@ public interface EntityDialogLauncher {
 
     Optional<Series> createSeries(Window owner);
 
+    default Optional<Series> createSeries(
+            Window owner,
+            String initialTitle,
+            SeriesEditorDialogViewModel.Creator creator) {
+        return createSeries(owner);
+    }
+
     Optional<Movie> createMovie(Window owner);
 }

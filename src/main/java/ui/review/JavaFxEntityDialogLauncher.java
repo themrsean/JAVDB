@@ -148,11 +148,20 @@ public final class JavaFxEntityDialogLauncher implements EntityDialogLauncher {
 
     @Override
     public Optional<Series> createSeries(Window owner) {
+        return createSeries(owner, "", entityManagementService::createSeries);
+    }
+
+    @Override
+    public Optional<Series> createSeries(
+            Window owner,
+            String initialTitle,
+            SeriesEditorDialogViewModel.Creator creator) {
         final SeriesEditorDialogViewModel viewModel =
                 new SeriesEditorDialogViewModel(
-                        entityManagementService::createSeries,
+                        creator,
                         backgroundExecutor,
-                        Platform::runLater
+                        Platform::runLater,
+                        initialTitle
                 );
         final TextField titleField = new TextField();
         final PublisherSelector publisherSelector = publisherSelector();

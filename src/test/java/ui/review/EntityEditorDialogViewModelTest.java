@@ -139,6 +139,29 @@ class EntityEditorDialogViewModelTest {
     }
 
     @Test
+    @DisplayName("Series dialog accepts an optional prefilled title")
+    void seriesDialogAcceptsInitialTitle() {
+        final SeriesEditorDialogViewModel prefilled =
+                new SeriesEditorDialogViewModel(
+                        (title, publisherId) -> new Series(UUID.randomUUID(), title,
+                                new Publisher(publisherId, "Publisher", List.of())),
+                        Runnable::run, Runnable::run, "Suggested Series");
+        final SeriesEditorDialogViewModel defaulted =
+                new SeriesEditorDialogViewModel(
+                        (title, publisherId) -> new Series(UUID.randomUUID(), title,
+                                new Publisher(publisherId, "Publisher", List.of())),
+                        Runnable::run, Runnable::run);
+
+        Assertions.assertAll(
+                () -> Assertions.assertEquals("Suggested Series",
+                        prefilled.titleProperty().get()),
+                () -> Assertions.assertFalse(prefilled.saveEnabledProperty().get()),
+                () -> Assertions.assertTrue(defaulted.titleProperty().get().isBlank()),
+                () -> Assertions.assertFalse(defaulted.saveEnabledProperty().get())
+        );
+    }
+
+    @Test
     @DisplayName("Movie dialog creates movie")
     void movieDialogCreatesMovie() {
         final MovieEditorDialogViewModel viewModel =

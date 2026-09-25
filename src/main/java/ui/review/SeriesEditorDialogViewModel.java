@@ -34,6 +34,15 @@ public final class SeriesEditorDialogViewModel {
             Executor backgroundExecutor,
             Executor uiExecutor) {
 
+        this(creator, backgroundExecutor, uiExecutor, "");
+    }
+
+    public SeriesEditorDialogViewModel(
+            Creator creator,
+            Executor backgroundExecutor,
+            Executor uiExecutor,
+            String initialTitle) {
+
         this.creator = Objects.requireNonNull(
                 creator,
                 "Series creator must not be null"
@@ -46,6 +55,7 @@ public final class SeriesEditorDialogViewModel {
                 uiExecutor,
                 "UI executor must not be null"
         );
+        title.set(initialTitle == null ? "" : initialTitle);
         title.addListener((observable, oldValue, newValue) -> validate());
         publisherId.addListener((observable, oldValue, newValue) -> validate());
         validate();

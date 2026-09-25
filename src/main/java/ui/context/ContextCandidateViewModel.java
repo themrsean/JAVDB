@@ -98,8 +98,16 @@ public final class ContextCandidateViewModel {
     }
 
     public void publisherCreated() {
+        catalogChanged("Publisher created.");
+    }
+
+    public void seriesCreated() {
+        catalogChanged("Series created.");
+    }
+
+    private void catalogChanged(String message) {
         if (disposed) return;
-        resultMessage.set("Publisher created.");
+        resultMessage.set(message);
         catalogRefresh.run();
         load();
     }

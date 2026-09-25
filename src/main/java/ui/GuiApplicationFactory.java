@@ -239,6 +239,9 @@ public final class GuiApplicationFactory {
         final service.ContextPublisherResolutionService contextPublisherService =
                 new service.ContextPublisherResolutionService(
                         contextReviewService, entityManagementService);
+        final service.ContextSeriesResolutionService contextSeriesService =
+                new service.ContextSeriesResolutionService(
+                        contextReviewService, entityManagementService);
         final ContextCandidateWindowLauncher contextCandidateLauncher =
                 new JavaFxContextCandidateWindowLauncher(
                         new ContextCandidateViewModel(contextReviewService,
@@ -246,6 +249,7 @@ public final class GuiApplicationFactory {
                                 Platform::runLater,
                                 scanRefreshCoordinator::requestCatalogRefresh),
                         contextPublisherService,
+                        contextSeriesService,
                         new JavaFxEntityDialogLauncher(entityManagementService,
                                 suggestionService, backgroundExecutor),
                         autocomplete(

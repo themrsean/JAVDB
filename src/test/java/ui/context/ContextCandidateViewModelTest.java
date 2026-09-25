@@ -76,6 +76,22 @@ class ContextCandidateViewModelTest {
     }
 
     @Test
+    void seriesActionsAreAvailableOnlyForUnresolvedCandidates() {
+        Assertions.assertAll(
+                () -> Assertions.assertTrue(ContextCandidateController.canResolveSeries(
+                        row("unresolved"))),
+                () -> Assertions.assertFalse(ContextCandidateController.canResolveSeries(
+                        new ContextCandidate("series", 1, Map.of(), Map.of(),
+                                ContextCandidateStatus.SERIES_MATCH,
+                                List.of(), List.of()))),
+                () -> Assertions.assertFalse(ContextCandidateController.canResolveSeries(
+                        new ContextCandidate("multiple", 1, Map.of(), Map.of(),
+                                ContextCandidateStatus.MULTIPLE_ROLE_MATCHES,
+                                List.of(), List.of())))
+        );
+    }
+
+    @Test
     void publisherCreationRefreshesCandidatesAndCatalogConsumers() {
         final AtomicInteger loads = new AtomicInteger();
         final AtomicInteger catalogRefreshes = new AtomicInteger();
@@ -89,6 +105,24 @@ class ContextCandidateViewModelTest {
                 () -> Assertions.assertEquals(1, catalogRefreshes.get()),
                 () -> Assertions.assertEquals(1, loads.get()),
                 () -> Assertions.assertEquals("Publisher created.",
+                        viewModel.resultMessageProperty().get())
+        );
+    }
+
+    @Test
+    void seriesCreationRefreshesCandidatesAndCatalogConsumers() {
+        final AtomicInteger loads = new AtomicInteger();
+        final AtomicInteger catalogRefreshes = new AtomicInteger();
+        final ContextCandidateViewModel viewModel = new ContextCandidateViewModel(
+                () -> { loads.incrementAndGet(); return List.of(); }, null,
+                Runnable::run, Runnable::run, catalogRefreshes::incrementAndGet);
+
+        viewModel.seriesCreated();
+
+        Assertions.assertAll(
+                () -> Assertions.assertEquals(1, catalogRefreshes.get()),
+                () -> Assertions.assertEquals(1, loads.get()),
+                () -> Assertions.assertEquals("Series created.",
                         viewModel.resultMessageProperty().get())
         );
     }

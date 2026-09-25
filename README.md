@@ -777,8 +777,14 @@ uses the existing Publisher autocomplete and requires confirmation before adding
 the candidate as an alias. Both actions re-check the exact Publisher/Series/
 Movie status immediately before writing, so stale candidates make no change and
 are refreshed. Neither action infers a Publisher from position, auto-creates a
-catalog record, or indexes media. Series and Movie resolution, plus READY-page
-batch indexing, remain deferred.
+catalog record, or indexes media.
+
+`Create Series` is also available only for an unresolved candidate. It reuses
+the existing Series dialog with the candidate prefilled as the proposed title.
+The user must explicitly select a Publisher through that dialog before Save is
+enabled; no Publisher is inferred from filename context or created by this
+action. Its stale-candidate recheck follows the same exact-match rule. Movie
+resolution and READY-page batch indexing remain deferred.
 
 ## Database Backup And Restore
 
