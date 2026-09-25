@@ -245,16 +245,17 @@ public final class SceneReviewDraftFactory {
     private List<UUID> performerIds(List<EntityMatch> performers) {
         return performers == null
                 ? List.of()
-                : performers.stream().map(EntityMatch::id).toList();
+                : performers.stream().map(EntityMatch::id)
+                .filter(Objects::nonNull)
+                .toList();
     }
 
     private List<UUID> performerIdsOrCurrent(
             List<EntityMatch> performers,
             List<UUID> currentIds) {
 
-        return performers == null || performers.isEmpty()
-                ? currentIds
-                : performerIds(performers);
+        final List<UUID> resolvedIds = performerIds(performers);
+        return resolvedIds.isEmpty() ? currentIds : resolvedIds;
     }
 
     private List<String> unmatchedPerformers(
@@ -268,6 +269,7 @@ public final class SceneReviewDraftFactory {
                     ? List.of()
                     : interpretation.performers()
                     .stream()
+                    .filter(match -> match.id() != null)
                     .map(EntityMatch::candidateText)
                     .toList();
 

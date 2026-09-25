@@ -113,6 +113,14 @@ public final class ReviewQueueViewModel {
         load();
     }
 
+    /** Applies a status choice immediately and returns the queue to page one. */
+    public void applyStatusFilter(ReviewMatchStatusFilter requestedFilter) {
+        statusFilter.set(Objects.requireNonNull(requestedFilter,
+                "Status filter must not be null"));
+        offset.set(DEFAULT_OFFSET);
+        load();
+    }
+
     public void clearFilters() {
         filenameFilter.set("");
         directoryFilter.set("");

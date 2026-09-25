@@ -209,6 +209,68 @@ class ReviewQueueViewModelTest {
     }
 
     @Test
+    @DisplayName("Status filter applies immediately and returns to first page")
+    void statusFilterAppliesImmediatelyAndResetsOffset() {
+        final CapturingService service = new CapturingService();
+        final ReviewQueueViewModel viewModel = viewModel(service);
+        viewModel.pageSize().set(PAGE_SIZE);
+        viewModel.offset().set(PAGE_SIZE);
+
+        viewModel.applyStatusFilter(ReviewMatchStatusFilter.UNRESOLVED);
+
+        Assertions.assertAll(
+                () -> Assertions.assertEquals(0, viewModel.offset().get()),
+                () -> Assertions.assertEquals(ReviewMatchStatusFilter.UNRESOLVED,
+                        viewModel.statusFilter().get()),
+                () -> Assertions.assertEquals(ReviewMatchStatusFilter.UNRESOLVED,
+                        service.lastFilter().statusFilter()),
+                () -> Assertions.assertEquals(0, service.lastFilter().offset()),
+                () -> Assertions.assertEquals(1, service.loadCount())
+        );
+    }
+
+    @Test
+    @DisplayName("Canceled dirty status change restores prior selection without reload")
+    void canceledDirtyStatusChangeRestoresPriorSelectionWithoutReload() {
+        final ReviewNavigationGuard guard = new ReviewNavigationGuard(() -> false);
+        final CapturingService service = new CapturingService();
+        final ReviewQueueViewModel viewModel = viewModel(service);
+
+        final ReviewMatchStatusFilter resolved =
+                ReviewQueueController.resolveStatusFilterChange(guard, true,
+                        ReviewMatchStatusFilter.ALL, ReviewMatchStatusFilter.READY);
+
+        Assertions.assertAll(
+                () -> Assertions.assertEquals(ReviewMatchStatusFilter.ALL, resolved),
+                () -> Assertions.assertEquals(0, service.loadCount()),
+                () -> Assertions.assertEquals(ReviewMatchStatusFilter.ALL,
+                        viewModel.statusFilter().get())
+        );
+    }
+
+    @Test
+    @DisplayName("Accepted dirty status change applies exactly once")
+    void acceptedDirtyStatusChangeAppliesExactlyOnce() {
+        final ReviewNavigationGuard guard = new ReviewNavigationGuard(() -> true);
+        final CapturingService service = new CapturingService();
+        final ReviewQueueViewModel viewModel = viewModel(service);
+
+        final ReviewMatchStatusFilter resolved =
+                ReviewQueueController.resolveStatusFilterChange(guard, true,
+                        ReviewMatchStatusFilter.ALL, ReviewMatchStatusFilter.READY);
+        if (resolved == ReviewMatchStatusFilter.READY) {
+            viewModel.applyStatusFilter(resolved);
+        }
+
+        Assertions.assertAll(
+                () -> Assertions.assertEquals(ReviewMatchStatusFilter.READY, resolved),
+                () -> Assertions.assertEquals(ReviewMatchStatusFilter.READY,
+                        service.lastFilter().statusFilter()),
+                () -> Assertions.assertEquals(1, service.loadCount())
+        );
+    }
+
+    @Test
     @DisplayName("Previous page never goes below zero")
     void previousPageNeverGoesBelowZero() {
         final ReviewQueueViewModel viewModel = viewModel(
@@ -554,6 +616,7 @@ class ReviewQueueViewModelTest {
     private static final class CapturingService
             implements ReviewQueueDataSource {
         private ReviewQueueFilter lastFilter = ReviewQueueFilter.firstPage();
+        private int loadCount;
         private ReviewQueuePage page =
                 new ReviewQueuePage(
                         ReviewQueueFilter.firstPage(),
@@ -564,6 +627,7 @@ class ReviewQueueViewModelTest {
 
         @Override
         public ReviewQueuePage loadPage(ReviewQueueFilter filter) {
+            loadCount++;
             lastFilter = filter;
             return new ReviewQueuePage(
                     filter,
@@ -575,6 +639,10 @@ class ReviewQueueViewModelTest {
 
         private ReviewQueueFilter lastFilter() {
             return lastFilter;
+        }
+
+        private int loadCount() {
+            return loadCount;
         }
     }
 

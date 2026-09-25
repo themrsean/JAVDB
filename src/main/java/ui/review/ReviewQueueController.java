@@ -74,6 +74,7 @@ public final class ReviewQueueController {
     private final ContextCandidateWindowLauncher contextCandidateWindowLauncher;
     private final Path databasePath;
     private boolean restoringSelection;
+    private boolean synchronizingStatusFilter;
 
     @FXML
     private TextField pathFilterField;
@@ -507,8 +508,12 @@ public final class ReviewQueueController {
                 .bindBidirectional(viewModel.minHeightFilter());
         statusFilterComboBox.getItems()
                 .setAll(ReviewMatchStatusFilter.values());
-        statusFilterComboBox.valueProperty()
-                .bindBidirectional(viewModel.statusFilter());
+        statusFilterComboBox.setValue(viewModel.statusFilter().get());
+        statusFilterComboBox.valueProperty().addListener(
+                (observable, previous, requested) ->
+                        changeStatusFilter(previous, requested));
+        viewModel.statusFilter().addListener((observable, previous, requested) ->
+                synchronizeStatusFilter(requested));
         pageSizeComboBox.getItems().setAll(
                 PAGE_SIZE_SMALL,
                 PAGE_SIZE_MEDIUM,
@@ -609,6 +614,38 @@ public final class ReviewQueueController {
                 .bind(viewModel.loadingProperty());
         errorLabel.textProperty()
                 .bind(viewModel.errorMessageProperty());
+    }
+
+    private void changeStatusFilter(ReviewMatchStatusFilter previous,
+            ReviewMatchStatusFilter requested) {
+        if (synchronizingStatusFilter || requested == null
+                || requested == previous) {
+            return;
+        }
+        if (resolveStatusFilterChange(navigationGuard,
+                editorViewModel.dirtyProperty().get(), previous, requested)
+                == requested) {
+            viewModel.applyStatusFilter(requested);
+        } else {
+            synchronizeStatusFilter(previous);
+        }
+    }
+
+    private void synchronizeStatusFilter(ReviewMatchStatusFilter filter) {
+        if (filter != null && statusFilterComboBox.getValue() != filter) {
+            synchronizingStatusFilter = true;
+            statusFilterComboBox.setValue(filter);
+            synchronizingStatusFilter = false;
+        }
+    }
+
+    static ReviewMatchStatusFilter resolveStatusFilterChange(
+            ReviewNavigationGuard guard, boolean dirty,
+            ReviewMatchStatusFilter previous, ReviewMatchStatusFilter requested) {
+        if (requested == null || requested == previous) {
+            return previous;
+        }
+        return guard.mayNavigateAway(dirty) ? requested : previous;
     }
 
     private void bindDetails() {

@@ -37,6 +37,8 @@ class SceneReviewDraftFactoryTest {
             UUID.fromString("22222222-aaaa-2222-aaaa-222222222222");
     private static final UUID PERFORMER_ID =
             UUID.fromString("33333333-aaaa-3333-aaaa-333333333333");
+    private static final UUID SECOND_PERFORMER_ID =
+            UUID.fromString("33333333-bbbb-3333-bbbb-333333333333");
     private static final UUID MOVIE_ID =
             UUID.fromString("44444444-aaaa-4444-aaaa-444444444444");
     private static final UUID SCENE_ID =
@@ -213,6 +215,80 @@ class SceneReviewDraftFactoryTest {
     }
 
     @Test
+    @DisplayName("Unresolved interpretation performer stays unmatched without null draft ID")
+    void unresolvedInterpretationPerformerDoesNotEnterDraftIds() {
+        final FilenameInterpretation interpretation = interpretation(
+                publisherMatch(), List.of(unmatchedPerformer("Abella Danger")), List.of());
+
+        final EditableSceneReviewDraft editable = factory.fromReviewDetails(
+                reviewDetails(interpretation, List.of("Abella Danger")));
+
+        Assertions.assertAll(
+                () -> Assertions.assertTrue(editable.draft().performerIds().isEmpty()),
+                () -> Assertions.assertEquals(List.of("Abella Danger"),
+                        editable.unmatchedPerformers())
+        );
+    }
+
+    @Test
+    @DisplayName("Resolved performer IDs survive alongside unresolved matches in order")
+    void mixedPerformerInterpretationKeepsOnlyResolvedIdsInOrder() {
+        final FilenameInterpretation interpretation = interpretation(publisherMatch(),
+                List.of(resolvedPerformer(PERFORMER_ID, "Alice"),
+                        unmatchedPerformer("Abella Danger"),
+                        resolvedPerformer(SECOND_PERFORMER_ID, "Beth")), List.of());
+
+        final EditableSceneReviewDraft editable = factory.fromReviewDetails(
+                reviewDetails(interpretation, List.of("Abella Danger")));
+
+        Assertions.assertAll(
+                () -> Assertions.assertEquals(List.of(PERFORMER_ID,
+                        SECOND_PERFORMER_ID), editable.draft().performerIds()),
+                () -> Assertions.assertEquals(List.of("Abella Danger"),
+                        editable.unmatchedPerformers())
+        );
+    }
+
+    @Test
+    @DisplayName("Preview draft filters unresolved performer IDs and retains evidence")
+    void previewDraftFiltersUnresolvedPerformerIds() {
+        final FilenameInterpretation interpretation = interpretation(publisherMatch(),
+                List.of(resolvedPerformer(PERFORMER_ID, "Alice"),
+                        unmatchedPerformer("Abella Danger")), List.of());
+        final FilenamePreview preview = preview(parsed("Scene Title",
+                List.of("Alice", "Abella Danger")), FilenameMatchStatus.READY,
+                interpretation, List.of(interpretation));
+
+        final EditableSceneReviewDraft editable = factory.fromUnassignedPreview(preview);
+
+        Assertions.assertAll(
+                () -> Assertions.assertEquals(List.of(PERFORMER_ID),
+                        editable.draft().performerIds()),
+                () -> Assertions.assertEquals(List.of("Abella Danger"),
+                        editable.unmatchedPerformers())
+        );
+    }
+
+    @Test
+    @DisplayName("Applying unresolved interpretation preserves existing IDs and unmatched evidence")
+    void applyingUnresolvedPerformerInterpretationIsSafe() throws Exception {
+        final EditableSceneReviewDraft editable = factory.fromUnassignedPreview(
+                readyPreview());
+        final FilenameInterpretation interpretation = interpretation(publisherMatch(),
+                List.of(unmatchedPerformer("Alice")), List.of());
+
+        final EditableSceneReviewDraft applied = factory.applyInterpretation(editable,
+                interpretation);
+
+        Assertions.assertAll(
+                () -> Assertions.assertEquals(List.of(PERFORMER_ID),
+                        applied.draft().performerIds()),
+                () -> Assertions.assertEquals(List.of("Alice"),
+                        applied.unmatchedPerformers())
+        );
+    }
+
+    @Test
     @DisplayName("Ambiguous preview preserves alternatives without selecting context")
     void ambiguousPreviewPreservesAlternativesWithoutSelectingContext()
             throws Exception {
@@ -372,7 +448,41 @@ class SceneReviewDraftFactoryTest {
         );
     }
 
+    private EntityMatch publisherMatch() {
+        return new EntityMatch(PUBLISHER_ID, "Publisher", "Publisher",
+                MatchSource.EXPLICIT_PRIMARY_NAME, null);
+    }
+
+    private EntityMatch resolvedPerformer(UUID id, String name) {
+        return new EntityMatch(id, name, name, MatchSource.EXPLICIT_PRIMARY_NAME,
+                null);
+    }
+
+    private EntityMatch unmatchedPerformer(String candidate) {
+        return new EntityMatch(null, null, candidate, MatchSource.UNMATCHED, null);
+    }
+
+    private ReviewDetails reviewDetails(FilenameInterpretation interpretation,
+            List<String> unmatchedPerformers) {
+        return new ReviewDetails(MEDIA_ID, temporaryDirectory.resolve("media.mp4"),
+                "media.mp4", temporaryDirectory.toString(), FILE_SIZE,
+                LAST_MODIFIED_MILLIS, WIDTH, HEIGHT, "PT1S", "",
+                FilenameParseStatus.VALID, LocalDate.of(2026, 1, 15),
+                List.of("Publisher"), "Scene Title", "", "", "",
+                List.of("Alice", "Abella Danger", "Beth"), List.of(),
+                unmatchedPerformers, "Publisher", "Publisher", "", "", "", "",
+                interpretation, List.of(interpretation), List.of(), List.of(), List.of(),
+                List.of(), FilenameMatchStatus.UNRESOLVED, new CanonicalRenameDisplay(
+                        "REVIEW_REQUIRED", "media.mp4", "",
+                        temporaryDirectory.resolve("media.mp4"), false, false, false,
+                        List.of(), "Filename interpretation is not ready."));
+    }
+
     private ParsedMediaFilename parsed(String title) {
+        return parsed(title, List.of("Alice"));
+    }
+
+    private ParsedMediaFilename parsed(String title, List<String> performers) {
         return new ParsedMediaFilename(
                 temporaryDirectory.resolve("media.mp4"),
                 "media",
@@ -383,7 +493,7 @@ class SceneReviewDraftFactoryTest {
                 null,
                 null,
                 title,
-                List.of("Alice"),
+                performers,
                 List.of(),
                 FilenameParseStatus.VALID,
                 List.of(),
