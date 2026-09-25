@@ -242,6 +242,9 @@ public final class GuiApplicationFactory {
         final service.ContextSeriesResolutionService contextSeriesService =
                 new service.ContextSeriesResolutionService(
                         contextReviewService, entityManagementService);
+        final service.ContextMovieResolutionService contextMovieService =
+                new service.ContextMovieResolutionService(
+                        contextReviewService, entityManagementService);
         final ContextCandidateWindowLauncher contextCandidateLauncher =
                 new JavaFxContextCandidateWindowLauncher(
                         new ContextCandidateViewModel(contextReviewService,
@@ -250,6 +253,7 @@ public final class GuiApplicationFactory {
                                 scanRefreshCoordinator::requestCatalogRefresh),
                         contextPublisherService,
                         contextSeriesService,
+                        contextMovieService,
                         new JavaFxEntityDialogLauncher(entityManagementService,
                                 suggestionService, backgroundExecutor),
                         autocomplete(

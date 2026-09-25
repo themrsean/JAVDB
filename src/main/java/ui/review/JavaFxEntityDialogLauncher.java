@@ -194,11 +194,20 @@ public final class JavaFxEntityDialogLauncher implements EntityDialogLauncher {
 
     @Override
     public Optional<Movie> createMovie(Window owner) {
+        return createMovie(owner, "", entityManagementService::createMovie);
+    }
+
+    @Override
+    public Optional<Movie> createMovie(
+            Window owner,
+            String initialTitle,
+            MovieEditorDialogViewModel.Creator creator) {
         final MovieEditorDialogViewModel viewModel =
                 new MovieEditorDialogViewModel(
-                        entityManagementService::createMovie,
+                        creator,
                         backgroundExecutor,
-                        Platform::runLater
+                        Platform::runLater,
+                        initialTitle
                 );
         final TextField titleField = new TextField();
         final TextField releaseDateField = new TextField();

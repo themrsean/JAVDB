@@ -17,6 +17,7 @@ import service.ContextCandidate;
 import service.ContextCandidateStatus;
 import service.ContextPublisherResolutionService;
 import service.ContextSeriesResolutionService;
+import service.ContextMovieResolutionService;
 import ui.control.EntityAutocompleteViewModel;
 import ui.control.EntitySuggestionDisplay;
 import ui.review.EntityDialogLauncher;
@@ -29,6 +30,7 @@ public final class ContextCandidateController {
     private final ContextCandidateViewModel viewModel;
     private final ContextPublisherResolutionService publisherResolutionService;
     private final ContextSeriesResolutionService seriesResolutionService;
+    private final ContextMovieResolutionService movieResolutionService;
     private final EntityDialogLauncher entityDialogLauncher;
     private final EntityAutocompleteViewModel publisherAutocomplete;
     private final FilteredList<ContextCandidate> visible;
@@ -46,6 +48,7 @@ public final class ContextCandidateController {
     @FXML private Button createPublisherButton;
     @FXML private Button mapPublisherAliasButton;
     @FXML private Button createSeriesButton;
+    @FXML private Button createMovieButton;
     @FXML private TextField publisherSearchField;
     @FXML private ListView<EntitySuggestionDisplay> publisherSuggestionsList;
     @FXML private Label emptyLabel;
@@ -54,17 +57,19 @@ public final class ContextCandidateController {
     private EntitySuggestionDisplay selectedPublisher;
 
     public ContextCandidateController(ContextCandidateViewModel viewModel) {
-        this(viewModel, null, null, null, null);
+        this(viewModel, null, null, null, null, null);
     }
 
     public ContextCandidateController(ContextCandidateViewModel viewModel,
             ContextPublisherResolutionService publisherResolutionService,
             ContextSeriesResolutionService seriesResolutionService,
+            ContextMovieResolutionService movieResolutionService,
             EntityDialogLauncher entityDialogLauncher,
             EntityAutocompleteViewModel publisherAutocomplete) {
         this.viewModel = Objects.requireNonNull(viewModel);
         this.publisherResolutionService = publisherResolutionService;
         this.seriesResolutionService = seriesResolutionService;
+        this.movieResolutionService = movieResolutionService;
         this.entityDialogLauncher = entityDialogLauncher;
         this.publisherAutocomplete = publisherAutocomplete;
         visible = new FilteredList<>(viewModel.candidates());
@@ -94,6 +99,7 @@ public final class ContextCandidateController {
         createPublisherButton.setOnAction(event -> createPublisher());
         mapPublisherAliasButton.setOnAction(event -> mapPublisherAlias());
         createSeriesButton.setOnAction(event -> createSeries());
+        createMovieButton.setOnAction(event -> createMovie());
         configurePublisherAutocomplete();
         errorLabel.textProperty().bind(viewModel.errorMessageProperty());
         resultLabel.textProperty().bind(viewModel.resultMessageProperty());
@@ -127,21 +133,23 @@ public final class ContextCandidateController {
                                 () -> !isUnresolvedSelection(),
                                 candidatesTable.getSelectionModel()
                                         .selectedItemProperty())));
+        createMovieButton.disableProperty().bind(
+                candidatesTable.getSelectionModel().selectedItemProperty().isNull()
+                        .or(javafx.beans.binding.Bindings.createBooleanBinding(
+                                () -> !isUnresolvedSelection(),
+                                candidatesTable.getSelectionModel()
+                                        .selectedItemProperty())));
     }
 
     private boolean isUnresolvedSelection() {
         final ContextCandidate candidate = candidatesTable.getSelectionModel()
                 .getSelectedItem();
-        return canResolvePublisher(candidate);
+        return canResolveCandidate(candidate);
     }
 
-    static boolean canResolvePublisher(ContextCandidate candidate) {
+    static boolean canResolveCandidate(ContextCandidate candidate) {
         return candidate != null
                 && candidate.status() == ContextCandidateStatus.UNRESOLVED;
-    }
-
-    static boolean canResolveSeries(ContextCandidate candidate) {
-        return canResolvePublisher(candidate);
     }
 
     private void createPublisher() {
@@ -170,12 +178,25 @@ public final class ContextCandidateController {
     private void createSeries() {
         final ContextCandidate candidate = candidatesTable.getSelectionModel()
                 .getSelectedItem();
-        if (!canResolveSeries(candidate) || seriesResolutionService == null
+        if (!canResolveCandidate(candidate) || seriesResolutionService == null
                 || entityDialogLauncher == null) return;
         entityDialogLauncher.createSeries(ownerWindow(), candidate.text(),
                         (title, publisherId) -> seriesResolutionService
                                 .createSeries(candidate.text(), title, publisherId))
                 .ifPresent(series -> viewModel.seriesCreated());
+        viewModel.load();
+    }
+
+    private void createMovie() {
+        final ContextCandidate candidate = candidatesTable.getSelectionModel()
+                .getSelectedItem();
+        if (!canResolveCandidate(candidate) || movieResolutionService == null
+                || entityDialogLauncher == null) return;
+        entityDialogLauncher.createMovie(ownerWindow(), candidate.text(),
+                        (title, releaseDate, publisherId, compilation) ->
+                                movieResolutionService.createMovie(candidate.text(),
+                                        title, releaseDate, publisherId, compilation))
+                .ifPresent(movie -> viewModel.movieCreated());
         viewModel.load();
     }
 

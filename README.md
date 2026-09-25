@@ -783,8 +783,14 @@ catalog record, or indexes media.
 the existing Series dialog with the candidate prefilled as the proposed title.
 The user must explicitly select a Publisher through that dialog before Save is
 enabled; no Publisher is inferred from filename context or created by this
-action. Its stale-candidate recheck follows the same exact-match rule. Movie
-resolution and READY-page batch indexing remain deferred.
+action. Its stale-candidate recheck follows the same exact-match rule.
+
+`Create Movie` follows the same explicit workflow: it pre-fills only the Movie
+title and requires an explicitly selected Publisher. Movie release date is
+optional and starts blank; the filename's media/scene date is never copied into
+it. Compilation starts as `false` and changes only when the user chooses it.
+Creating a Movie does not attach scenes or media files, infer any role from
+position, or index media. READY-page batch indexing remains deferred.
 
 ## Database Backup And Restore
 

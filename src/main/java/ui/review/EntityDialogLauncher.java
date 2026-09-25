@@ -30,4 +30,11 @@ public interface EntityDialogLauncher {
     }
 
     Optional<Movie> createMovie(Window owner);
+
+    default Optional<Movie> createMovie(
+            Window owner,
+            String initialTitle,
+            MovieEditorDialogViewModel.Creator creator) {
+        return createMovie(owner);
+    }
 }

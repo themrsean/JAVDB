@@ -62,13 +62,13 @@ class ContextCandidateViewModelTest {
     @Test
     void publisherActionsAreAvailableOnlyForUnresolvedCandidates() {
         Assertions.assertAll(
-                () -> Assertions.assertTrue(ContextCandidateController.canResolvePublisher(
+                () -> Assertions.assertTrue(ContextCandidateController.canResolveCandidate(
                         row("unresolved"))),
-                () -> Assertions.assertFalse(ContextCandidateController.canResolvePublisher(
+                () -> Assertions.assertFalse(ContextCandidateController.canResolveCandidate(
                         new ContextCandidate("publisher", 1, Map.of(), Map.of(),
                                 ContextCandidateStatus.PUBLISHER_MATCH,
                                 List.of(), List.of()))),
-                () -> Assertions.assertFalse(ContextCandidateController.canResolvePublisher(
+                () -> Assertions.assertFalse(ContextCandidateController.canResolveCandidate(
                         new ContextCandidate("multiple", 1, Map.of(), Map.of(),
                                 ContextCandidateStatus.MULTIPLE_ROLE_MATCHES,
                                 List.of(), List.of())))
@@ -78,13 +78,13 @@ class ContextCandidateViewModelTest {
     @Test
     void seriesActionsAreAvailableOnlyForUnresolvedCandidates() {
         Assertions.assertAll(
-                () -> Assertions.assertTrue(ContextCandidateController.canResolveSeries(
+                () -> Assertions.assertTrue(ContextCandidateController.canResolveCandidate(
                         row("unresolved"))),
-                () -> Assertions.assertFalse(ContextCandidateController.canResolveSeries(
+                () -> Assertions.assertFalse(ContextCandidateController.canResolveCandidate(
                         new ContextCandidate("series", 1, Map.of(), Map.of(),
                                 ContextCandidateStatus.SERIES_MATCH,
                                 List.of(), List.of()))),
-                () -> Assertions.assertFalse(ContextCandidateController.canResolveSeries(
+                () -> Assertions.assertFalse(ContextCandidateController.canResolveCandidate(
                         new ContextCandidate("multiple", 1, Map.of(), Map.of(),
                                 ContextCandidateStatus.MULTIPLE_ROLE_MATCHES,
                                 List.of(), List.of())))
@@ -123,6 +123,24 @@ class ContextCandidateViewModelTest {
                 () -> Assertions.assertEquals(1, catalogRefreshes.get()),
                 () -> Assertions.assertEquals(1, loads.get()),
                 () -> Assertions.assertEquals("Series created.",
+                        viewModel.resultMessageProperty().get())
+        );
+    }
+
+    @Test
+    void movieCreationRefreshesCandidatesAndCatalogConsumers() {
+        final AtomicInteger loads = new AtomicInteger();
+        final AtomicInteger catalogRefreshes = new AtomicInteger();
+        final ContextCandidateViewModel viewModel = new ContextCandidateViewModel(
+                () -> { loads.incrementAndGet(); return List.of(); }, null,
+                Runnable::run, Runnable::run, catalogRefreshes::incrementAndGet);
+
+        viewModel.movieCreated();
+
+        Assertions.assertAll(
+                () -> Assertions.assertEquals(1, catalogRefreshes.get()),
+                () -> Assertions.assertEquals(1, loads.get()),
+                () -> Assertions.assertEquals("Movie created.",
                         viewModel.resultMessageProperty().get())
         );
     }

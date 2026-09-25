@@ -7,6 +7,7 @@ import javafx.stage.Stage;
 import javafx.stage.Window;
 import service.ContextPublisherResolutionService;
 import service.ContextSeriesResolutionService;
+import service.ContextMovieResolutionService;
 import ui.control.EntityAutocompleteViewModel;
 import ui.review.EntityDialogLauncher;
 
@@ -18,6 +19,7 @@ public final class JavaFxContextCandidateWindowLauncher
     private final ContextCandidateViewModel viewModel;
     private final ContextPublisherResolutionService publisherResolutionService;
     private final ContextSeriesResolutionService seriesResolutionService;
+    private final ContextMovieResolutionService movieResolutionService;
     private final EntityDialogLauncher entityDialogLauncher;
     private final EntityAutocompleteViewModel publisherAutocomplete;
     private Stage stage;
@@ -25,11 +27,13 @@ public final class JavaFxContextCandidateWindowLauncher
     public JavaFxContextCandidateWindowLauncher(ContextCandidateViewModel viewModel,
             ContextPublisherResolutionService publisherResolutionService,
             ContextSeriesResolutionService seriesResolutionService,
+            ContextMovieResolutionService movieResolutionService,
             EntityDialogLauncher entityDialogLauncher,
             EntityAutocompleteViewModel publisherAutocomplete) {
         this.viewModel = Objects.requireNonNull(viewModel);
         this.publisherResolutionService = Objects.requireNonNull(publisherResolutionService);
         this.seriesResolutionService = Objects.requireNonNull(seriesResolutionService);
+        this.movieResolutionService = Objects.requireNonNull(movieResolutionService);
         this.entityDialogLauncher = Objects.requireNonNull(entityDialogLauncher);
         this.publisherAutocomplete = Objects.requireNonNull(publisherAutocomplete);
     }
@@ -54,6 +58,7 @@ public final class JavaFxContextCandidateWindowLauncher
             if (type.equals(ContextCandidateController.class)) {
                 return new ContextCandidateController(viewModel,
                         publisherResolutionService, seriesResolutionService,
+                        movieResolutionService,
                         entityDialogLauncher,
                         publisherAutocomplete);
             }

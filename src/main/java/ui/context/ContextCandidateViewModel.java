@@ -105,6 +105,10 @@ public final class ContextCandidateViewModel {
         catalogChanged("Series created.");
     }
 
+    public void movieCreated() {
+        catalogChanged("Movie created.");
+    }
+
     private void catalogChanged(String message) {
         if (disposed) return;
         resultMessage.set(message);

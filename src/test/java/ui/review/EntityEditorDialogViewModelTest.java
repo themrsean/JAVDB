@@ -201,4 +201,30 @@ class EntityEditorDialogViewModelTest {
                 )
         );
     }
+
+    @Test
+    @DisplayName("Movie dialog accepts an optional prefilled title only")
+    void movieDialogAcceptsInitialTitleWithoutInferringMetadata() {
+        final MovieEditorDialogViewModel prefilled = new MovieEditorDialogViewModel(
+                (title, date, publisherId, compilation) -> new Movie(UUID.randomUUID(),
+                        title, date, new Publisher(publisherId, "Publisher", List.of()),
+                        List.of(), compilation, List.of()),
+                Runnable::run, Runnable::run, "Suggested Movie");
+        final MovieEditorDialogViewModel defaulted = new MovieEditorDialogViewModel(
+                (title, date, publisherId, compilation) -> new Movie(UUID.randomUUID(),
+                        title, date, new Publisher(publisherId, "Publisher", List.of()),
+                        List.of(), compilation, List.of()),
+                Runnable::run, Runnable::run);
+
+        Assertions.assertAll(
+                () -> Assertions.assertEquals("Suggested Movie",
+                        prefilled.titleProperty().get()),
+                () -> Assertions.assertTrue(prefilled.releaseDateTextProperty().get().isBlank()),
+                () -> Assertions.assertFalse(prefilled.compilationProperty().get()),
+                () -> Assertions.assertFalse(prefilled.saveEnabledProperty().get()),
+                () -> Assertions.assertTrue(defaulted.titleProperty().get().isBlank()),
+                () -> Assertions.assertTrue(defaulted.releaseDateTextProperty().get().isBlank()),
+                () -> Assertions.assertFalse(defaulted.compilationProperty().get())
+        );
+    }
 }
