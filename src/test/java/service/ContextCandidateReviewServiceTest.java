@@ -115,10 +115,93 @@ class ContextCandidateReviewServiceTest {
         );
     }
 
+    @Test
+    void aggregatesExactPublisherContextOncePerFileWithRelativePositions()
+            throws Exception {
+        final Publisher publisher = publisher("Publisher");
+        add("(25.01.01) Publisher - Unknown - Publisher - Title - Alice.mp4");
+        add("(25.01.02) Publisher - Unknown - Title - Alice.mp4");
+        add("(25.01.03) Unknown - Publisher - Title - Alice.mp4");
+
+        final ContextPublisherEvidence evidence = evidence(candidate("Unknown"), publisher);
+        Assertions.assertAll(
+                () -> Assertions.assertEquals(ContextCandidateStatus.UNRESOLVED,
+                        candidate("Unknown").status()),
+                () -> Assertions.assertEquals(3, evidence.affectedFiles()),
+                () -> Assertions.assertEquals(2,
+                        evidence.candidateBeforePublisherFiles()),
+                () -> Assertions.assertEquals(2,
+                        evidence.candidateAfterPublisherFiles()),
+                () -> Assertions.assertEquals(1,
+                        evidence.publisherOnBothSidesFiles()),
+                () -> Assertions.assertEquals(3, evidence.directPublisherFiles()),
+                () -> Assertions.assertEquals(0, evidence.seriesPublisherFiles()),
+                () -> Assertions.assertEquals(0, evidence.moviePublisherFiles())
+        );
+    }
+
+    @Test
+    void aggregatesPublisherAliasesAndSeriesAndMoviePublisherContext()
+            throws Exception {
+        final Publisher publisher = new Publisher(UUID.randomUUID(), "Canonical",
+                List.of("Publisher Alias"));
+        publishers.insert(publisher);
+        series.insert(new Series(UUID.randomUUID(), "Series Context", publisher));
+        movies.insert(new Movie(UUID.randomUUID(), "Movie Context", null, publisher,
+                List.of(), false, List.of()));
+        add("(25.01.01) Publisher Alias - Unknown - Title - Alice.mp4");
+        add("(25.01.02) Series Context - Unknown - Title - Alice.mp4");
+        add("(25.01.03) Movie Context - Unknown - Title - Alice.mp4");
+
+        final ContextPublisherEvidence evidence = evidence(candidate("Unknown"), publisher);
+        Assertions.assertAll(
+                () -> Assertions.assertEquals(3, evidence.affectedFiles()),
+                () -> Assertions.assertEquals(1, evidence.directPublisherFiles()),
+                () -> Assertions.assertEquals(1, evidence.seriesPublisherFiles()),
+                () -> Assertions.assertEquals(1, evidence.moviePublisherFiles()),
+                () -> Assertions.assertEquals(3,
+                        evidence.candidateAfterPublisherFiles())
+        );
+    }
+
+    @Test
+    void ignoresPrefixSuggestionsAndSortsMultiplePublisherEvidenceDeterministically()
+            throws Exception {
+        final Publisher alpha = publisher("Alpha Publisher");
+        final Publisher beta = publisher("Beta Publisher");
+        publisher("Publisher");
+        add("(25.01.01) Beta Publisher - Unknown - Title - Alice.mp4");
+        add("(25.01.02) Alpha Publisher - Unknown - Title - Alice.mp4");
+        add("(25.01.03) Pub - Prefix Only - Title - Alice.mp4");
+
+        final List<ContextPublisherEvidence> evidence = candidate("Unknown")
+                .publisherEvidence();
+        Assertions.assertAll(
+                () -> Assertions.assertEquals(List.of(alpha.getName(), beta.getName()),
+                        evidence.stream().map(ContextPublisherEvidence::publisherName)
+                                .toList()),
+                () -> Assertions.assertTrue(candidate("Prefix Only")
+                        .publisherEvidence().isEmpty())
+        );
+    }
+
     private ContextCandidate candidate(String text) throws Exception {
         return service.loadCandidates().stream()
                 .filter(candidate -> candidate.text().equalsIgnoreCase(text))
                 .findFirst().orElseThrow();
+    }
+
+    private ContextPublisherEvidence evidence(ContextCandidate candidate,
+            Publisher publisher) {
+        return candidate.publisherEvidence().stream()
+                .filter(evidence -> evidence.publisherId().equals(publisher.getId()))
+                .findFirst().orElseThrow();
+    }
+
+    private Publisher publisher(String name) throws Exception {
+        final Publisher publisher = new Publisher(UUID.randomUUID(), name, List.of());
+        publishers.insert(publisher);
+        return publisher;
     }
 
     private void add(String name) throws Exception {

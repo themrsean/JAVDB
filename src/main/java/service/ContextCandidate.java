@@ -12,12 +12,14 @@ public record ContextCandidate(
         Map<Integer, Integer> contextLengthCounts,
         ContextCandidateStatus status,
         List<ContextCandidateMatch> matches,
+        List<ContextPublisherEvidence> publisherEvidence,
         List<Path> representativePaths) {
 
     public ContextCandidate {
         positionCounts = Map.copyOf(positionCounts);
         contextLengthCounts = Map.copyOf(contextLengthCounts);
         matches = List.copyOf(matches);
+        publisherEvidence = List.copyOf(publisherEvidence);
         representativePaths = List.copyOf(representativePaths);
     }
 }

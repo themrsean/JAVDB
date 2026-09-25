@@ -15,6 +15,7 @@ import javafx.scene.control.TextField;
 import javafx.scene.control.cell.PropertyValueFactory;
 import service.ContextCandidate;
 import service.ContextCandidateStatus;
+import service.ContextPublisherEvidence;
 import service.ContextPublisherResolutionService;
 import service.ContextSeriesResolutionService;
 import service.ContextMovieResolutionService;
@@ -23,6 +24,7 @@ import ui.control.EntitySuggestionDisplay;
 import ui.review.EntityDialogLauncher;
 
 import java.util.Locale;
+import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
@@ -51,6 +53,8 @@ public final class ContextCandidateController {
     @FXML private Button createMovieButton;
     @FXML private TextField publisherSearchField;
     @FXML private ListView<EntitySuggestionDisplay> publisherSuggestionsList;
+    @FXML private ListView<String> publisherEvidenceList;
+    @FXML private Label publisherEvidenceLabel;
     @FXML private Label emptyLabel;
     @FXML private Label errorLabel;
     @FXML private Label resultLabel;
@@ -91,6 +95,8 @@ public final class ContextCandidateController {
                 .map(path -> path.getFileName().toString())
                 .collect(Collectors.joining(" | "))));
         candidatesTable.setItems(visible);
+        candidatesTable.getSelectionModel().selectedItemProperty().addListener(
+                (observable, previous, selected) -> showPublisherEvidence(selected));
         attentionOnlyCheckBox.selectedProperty()
                 .bindBidirectional(viewModel.attentionOnlyProperty());
         attentionOnlyCheckBox.selectedProperty().addListener((o, oldValue, newValue) -> filter());
@@ -106,6 +112,7 @@ public final class ContextCandidateController {
         emptyLabel.visibleProperty().bind(Bindings.isEmpty(visible)
                 .and(viewModel.loadingProperty().not()));
         filter();
+        showPublisherEvidence(null);
     }
 
     private void configurePublisherAutocomplete() {
@@ -219,6 +226,47 @@ public final class ContextCandidateController {
                 : candidateFilterField.getText().toLowerCase(Locale.ROOT);
         visible.setPredicate(candidate -> matchesFilter(candidate, text,
                 viewModel.attentionOnlyProperty().get()));
+    }
+
+    private void showPublisherEvidence(ContextCandidate candidate) {
+        publisherEvidenceList.getItems().clear();
+        if (candidate == null) {
+            publisherEvidenceLabel.setText(
+                    "Known Publisher context: select a candidate to inspect evidence.");
+            return;
+        }
+        if (candidate.publisherEvidence().isEmpty()) {
+            publisherEvidenceLabel.setText(
+                    "Known Publisher context: no exact Publisher context is currently known.");
+            return;
+        }
+        publisherEvidenceLabel.setText("Known Publisher context (exact catalog evidence):");
+        publisherEvidenceList.getItems().setAll(candidate.publisherEvidence().stream()
+                .map(ContextCandidateController::formatPublisherEvidence).toList());
+    }
+
+    static String formatPublisherEvidence(ContextPublisherEvidence evidence) {
+        final List<String> parts = new java.util.ArrayList<>();
+        if (evidence.candidateBeforePublisherFiles() > 0) {
+            parts.add("candidate before: " + evidence.candidateBeforePublisherFiles());
+        }
+        if (evidence.candidateAfterPublisherFiles() > 0) {
+            parts.add("candidate after: " + evidence.candidateAfterPublisherFiles());
+        }
+        if (evidence.publisherOnBothSidesFiles() > 0) {
+            parts.add("both sides: " + evidence.publisherOnBothSidesFiles());
+        }
+        if (evidence.directPublisherFiles() > 0) {
+            parts.add("exact Publisher: " + evidence.directPublisherFiles());
+        }
+        if (evidence.seriesPublisherFiles() > 0) {
+            parts.add("exact Series: " + evidence.seriesPublisherFiles());
+        }
+        if (evidence.moviePublisherFiles() > 0) {
+            parts.add("exact Movie: " + evidence.moviePublisherFiles());
+        }
+        return evidence.publisherName() + " — " + evidence.affectedFiles()
+                + " files (" + String.join(", ", parts) + ")";
     }
 
     static boolean matchesFilter(ContextCandidate candidate, String text,

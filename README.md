@@ -791,6 +791,15 @@ match remains explicitly ambiguous. The default view puts unresolved and
 multiple-match rows first, then orders by affected files and deterministic
 name; text and attention-only filters apply to the already loaded list.
 
+Selecting a candidate also shows **Known Publisher context**: exact Publishers
+found in other context segments of the same filenames, the number of affected
+files, and whether the candidate was before, after, or on both sides of that
+catalog-backed Publisher. Exact Series and Movies contribute their required
+Publisher relationship as evidence too. These counts use exact primary-name or
+alias matches only; prefix/substring suggestions do not count. They are
+catalog-work evidence, not a role inference or recommendation: users still
+explicitly choose whether to create or map a Publisher, Series, or Movie.
+
 Context position is never a role classification, and prefix or substring
 suggestions do not classify a row. Opening, refreshing, filtering, and
 selecting this view creates no entities, aliases, scenes, assignments, or index

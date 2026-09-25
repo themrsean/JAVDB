@@ -26,4 +26,6 @@
         <TableColumn fx:id="matchesColumn" text="Exact catalog matches" prefWidth="270"/>
         <TableColumn fx:id="examplesColumn" text="Representative filenames" prefWidth="330"/>
     </columns></TableView>
+    <Label fx:id="publisherEvidenceLabel" wrapText="true"/>
+    <ListView fx:id="publisherEvidenceList" prefHeight="100"/>
 </VBox>

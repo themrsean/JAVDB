@@ -26,6 +26,7 @@ class ContextCandidateFxmlTest {
                 "createPublisherButton", "createSeriesButton", "createMovieButton",
                 "mapPublisherAliasButton",
                 "publisherSearchField", "publisherSuggestionsList",
+                "publisherEvidenceLabel", "publisherEvidenceList",
                 "emptyLabel", "errorLabel", "resultLabel")) {
             Assertions.assertTrue(hasFxId(document, id), "Missing fx:id " + id);
         }

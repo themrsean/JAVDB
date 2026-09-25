@@ -5,12 +5,14 @@ import org.junit.jupiter.api.Test;
 import service.ContextCandidate;
 import service.ContextCandidateSource;
 import service.ContextCandidateStatus;
+import service.ContextPublisherEvidence;
 
 import java.nio.file.Path;
 import java.sql.SQLException;
 import java.util.ArrayDeque;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -46,7 +48,7 @@ class ContextCandidateViewModelTest {
         final ContextCandidate unresolved = row("Alpha Context");
         final ContextCandidate resolved = new ContextCandidate("Beta Context", 1,
                 Map.of(1, 1), Map.of(1, 1),
-                ContextCandidateStatus.PUBLISHER_MATCH, List.of(), List.of());
+                ContextCandidateStatus.PUBLISHER_MATCH, List.of(), List.of(), List.of());
         Assertions.assertAll(
                 () -> Assertions.assertTrue(ContextCandidateController.matchesFilter(
                         unresolved, "alpha", true)),
@@ -67,11 +69,26 @@ class ContextCandidateViewModelTest {
                 () -> Assertions.assertFalse(ContextCandidateController.canResolveCandidate(
                         new ContextCandidate("publisher", 1, Map.of(), Map.of(),
                                 ContextCandidateStatus.PUBLISHER_MATCH,
-                                List.of(), List.of()))),
+                                List.of(), List.of(), List.of()))),
                 () -> Assertions.assertFalse(ContextCandidateController.canResolveCandidate(
                         new ContextCandidate("multiple", 1, Map.of(), Map.of(),
                                 ContextCandidateStatus.MULTIPLE_ROLE_MATCHES,
-                                List.of(), List.of())))
+                                List.of(), List.of(), List.of())))
+        );
+    }
+
+    @Test
+    void publisherEvidenceFormattingKeepsItsExactEvidenceExplicit() {
+        final String display = ContextCandidateController.formatPublisherEvidence(
+                new ContextPublisherEvidence(UUID.randomUUID(), "Publisher", 4,
+                        3, 1, 0, 2, 1, 1));
+        Assertions.assertAll(
+                () -> Assertions.assertTrue(display.contains("Publisher — 4 files")),
+                () -> Assertions.assertTrue(display.contains("candidate before: 3")),
+                () -> Assertions.assertTrue(display.contains("candidate after: 1")),
+                () -> Assertions.assertTrue(display.contains("exact Publisher: 2")),
+                () -> Assertions.assertTrue(display.contains("exact Series: 1")),
+                () -> Assertions.assertTrue(display.contains("exact Movie: 1"))
         );
     }
 
@@ -83,11 +100,11 @@ class ContextCandidateViewModelTest {
                 () -> Assertions.assertFalse(ContextCandidateController.canResolveCandidate(
                         new ContextCandidate("series", 1, Map.of(), Map.of(),
                                 ContextCandidateStatus.SERIES_MATCH,
-                                List.of(), List.of()))),
+                                List.of(), List.of(), List.of()))),
                 () -> Assertions.assertFalse(ContextCandidateController.canResolveCandidate(
                         new ContextCandidate("multiple", 1, Map.of(), Map.of(),
                                 ContextCandidateStatus.MULTIPLE_ROLE_MATCHES,
-                                List.of(), List.of())))
+                                List.of(), List.of(), List.of())))
         );
     }
 
@@ -147,7 +164,8 @@ class ContextCandidateViewModelTest {
 
     private static ContextCandidate row(String text) {
         return new ContextCandidate(text, 1, Map.of(1, 1), Map.of(1, 1),
-                ContextCandidateStatus.UNRESOLVED, List.of(), List.of(Path.of(text)));
+                ContextCandidateStatus.UNRESOLVED, List.of(), List.of(),
+                List.of(Path.of(text)));
     }
 
     private static final class SequencedSource implements ContextCandidateSource {
