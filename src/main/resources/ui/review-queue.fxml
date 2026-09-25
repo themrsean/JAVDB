@@ -72,7 +72,8 @@
                     <tabs>
                         <Tab fx:id="unassignedMediaTab" text="Unassigned Media">
                             <content>
-                                <VBox spacing="8" styleClass="queue-pane">
+                                <VBox fx:id="unassignedMediaPane"
+                                      spacing="8" styleClass="queue-pane">
                                     <padding>
                                         <Insets top="10" right="10" bottom="10" left="10"/>
                                     </padding>
@@ -133,7 +134,15 @@
                                         <Button fx:id="nextButton" text="Next"/>
                                         <Label text="Page size"/>
                                         <ComboBox fx:id="pageSizeComboBox" prefWidth="90"/>
+                                        <Button fx:id="processReadyPageButton"
+                                                text="Process READY Rows on This Page"/>
                                     </HBox>
+                                    <Label fx:id="readyPageBatchStatusLabel"
+                                           wrapText="true"/>
+                                    <ListView fx:id="readyPageBatchResultsList"
+                                              prefHeight="90"
+                                              visible="false"
+                                              managed="false"/>
                                 </VBox>
                             </content>
                         </Tab>

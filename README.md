@@ -306,8 +306,35 @@ build/install/JAVDB/bin/JAVDB gui --database "/tmp/javdb-gui-smoke/javdb.db"
 ```
 
 Do not omit `--database` during smoke testing unless you intentionally want to
-open the configured default database. The current-page READY batch action is
-still deferred and is not part of this GUI slice.
+open the configured default database.
+
+### Process READY Rows on This Page
+
+The Unassigned Media tab provides `Process READY Rows on This Page` for an
+explicit, bounded batch of the READY rows currently displayed. The action takes
+a stable snapshot of the loaded page: non-READY rows, rows hidden by the status
+filter, and rows on later pages are never added to the batch.
+
+Before confirmation, JAVDB refreshes each snapshot row's database assignment
+and filename preview on the background worker. The confirmation summarizes the
+displayed rows, initial READY candidates, current eligible rows, and rows that
+became non-READY, assigned, or missing. The user then explicitly chooses
+`Create Without Renaming`, `Create and Rename`, or `Cancel`; Cancel writes
+nothing. Existing dirty-editor discard protection runs before preflight.
+
+Each eligible row is revalidated again immediately before persistence. Rows
+that changed after preflight are skipped independently, and one failure does not
+stop later rows. Scene creation uses the same reviewed draft and save workflow
+as the single-row editor. Successful creation is `VERIFIED`; rename mode uses
+the existing physical/database rename behavior, and a rename failure preserves
+the created Scene as `NEEDS_REVIEW`. Existing assignment checks prevent
+duplicate or conflicting assignment, and a matched Movie receives the new Scene
+through the normal reviewed-save behavior without inferred ordering.
+
+After completion, the Unassigned Media queue, Scene review queue, and Media
+Library refresh. The summary reports created, renamed, rename-failed, skipped,
+missing, and failed counts, with non-success rows listed by filename. This is a
+current-page reviewed operation, not an all-library automatic indexing path.
 
 ## Media Library / Scan Review
 
@@ -333,9 +360,9 @@ the same filename preview and assignment logic as indexing. Missing files and
 uninterpretable filenames are diagnostic states, not errors that alter data.
 
 The Media Library is strictly read-only. It does not edit, delete, reassign, or
-index media, and it does not persist scan history. The READY-page batch action
-remains deferred. Its purpose is to validate what scanning actually stored
-before using the existing review/indexing workflows.
+index media, and it does not persist scan history. Its purpose is to validate
+what scanning actually stored before using the existing review/indexing
+workflows.
 
 For manual smoke testing without touching the production database, create a
 temporary database outside `data/` and launch:
@@ -742,8 +769,7 @@ Creating a performer is an explicit confirmed action and uses category
 adds the candidate as an alias only after confirmation; no candidates, aliases,
 or scenes are created simply by opening or refreshing the review. Invalid
 filenames are excluded conservatively. Refreshing performer candidates leaves a
-dirty scene-review draft intact and does not auto-index media. Publisher,
-series, movie bootstrapping and READY-page batch indexing remain deferred.
+dirty scene-review draft intact and does not auto-index media.
 
 Use normal multi-selection and `Create Selected Performers` to explicitly
 create unresolved candidates as `UNKNOWN` performers. Confirmation displays the
@@ -790,7 +816,7 @@ title and requires an explicitly selected Publisher. Movie release date is
 optional and starts blank; the filename's media/scene date is never copied into
 it. Compilation starts as `false` and changes only when the user chooses it.
 Creating a Movie does not attach scenes or media files, infer any role from
-position, or index media. READY-page batch indexing remains deferred.
+position, or index media.
 
 ## Database Backup And Restore
 

@@ -2,7 +2,10 @@ package ui.review;
 
 import javafx.beans.binding.Bindings;
 import javafx.fxml.FXML;
+import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
+import javafx.scene.control.ButtonBar;
+import javafx.scene.control.ButtonType;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListView;
@@ -22,9 +25,13 @@ import model.Publisher;
 import model.Series;
 import service.EntityMatch;
 import service.FilenameInterpretation;
+import service.FilenameMatchStatus;
 import service.ReviewDetails;
 import service.ReviewMatchStatusFilter;
 import service.ReviewQueueItem;
+import service.ReadyPageBatchMode;
+import service.ReadyPageBatchPreflight;
+import service.ReadyPageBatchResult;
 import service.SceneReviewSaveResult;
 import service.SceneReviewSaveStatus;
 import service.SceneReviewQueueItem;
@@ -41,6 +48,7 @@ import ui.performer.PerformerCandidateWindowLauncher;
 import ui.context.ContextCandidateWindowLauncher;
 
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Objects;
 
 public final class ReviewQueueController {
@@ -52,6 +60,7 @@ public final class ReviewQueueController {
     private final ReviewQueueViewModel viewModel;
     private final SceneReviewEditorViewModel editorViewModel;
     private final SceneReviewQueueViewModel sceneQueueViewModel;
+    private final ReadyPageBatchViewModel readyPageBatchViewModel;
     private final EntityDialogLauncher entityDialogLauncher;
     private final ReviewNavigationGuard navigationGuard;
     private final EntityAutocompleteViewModel publisherAutocomplete;
@@ -92,6 +101,14 @@ public final class ReviewQueueController {
     private ComboBox<Integer> pageSizeComboBox;
     @FXML
     private Button refreshButton;
+    @FXML
+    private Button processReadyPageButton;
+    @FXML
+    private Label readyPageBatchStatusLabel;
+    @FXML
+    private ListView<String> readyPageBatchResultsList;
+    @FXML
+    private VBox unassignedMediaPane;
     @FXML
     private TableView<ReviewQueueItem> queueTable;
     @FXML
@@ -301,6 +318,7 @@ public final class ReviewQueueController {
             ReviewQueueViewModel viewModel,
             SceneReviewEditorViewModel editorViewModel,
             SceneReviewQueueViewModel sceneQueueViewModel,
+            ReadyPageBatchViewModel readyPageBatchViewModel,
             EntityDialogLauncher entityDialogLauncher,
             ReviewNavigationGuard navigationGuard,
             EntityAutocompleteViewModel publisherAutocomplete,
@@ -325,6 +343,10 @@ public final class ReviewQueueController {
         this.sceneQueueViewModel = Objects.requireNonNull(
                 sceneQueueViewModel,
                 "Scene review queue view model must not be null"
+        );
+        this.readyPageBatchViewModel = Objects.requireNonNull(
+                readyPageBatchViewModel,
+                "READY-page batch view model must not be null"
         );
         this.entityDialogLauncher = Objects.requireNonNull(
                 entityDialogLauncher,
@@ -397,6 +419,7 @@ public final class ReviewQueueController {
     public void dispose() {
         viewModel.dispose();
         sceneQueueViewModel.dispose();
+        readyPageBatchViewModel.dispose();
         mediaLibraryViewModel.dispose();
         publisherAutocomplete.dispose();
         seriesAutocomplete.dispose();
@@ -504,6 +527,46 @@ public final class ReviewQueueController {
         clearFiltersButton.setOnAction(event ->
                 guardedNavigation(viewModel::clearFilters));
         refreshButton.setOnAction(event -> guardedNavigation(viewModel::load));
+        processReadyPageButton.setOnAction(event -> startReadyPageBatch());
+        processReadyPageButton.disableProperty().bind(
+                Bindings.createBooleanBinding(
+                        () -> viewModel.loadingProperty().get()
+                                || readyPageBatchViewModel.busyProperty().get()
+                                || viewModel.rows().stream().noneMatch(row ->
+                                row.matchStatus() == FilenameMatchStatus.READY),
+                        viewModel.loadingProperty(),
+                        readyPageBatchViewModel.busyProperty(),
+                        viewModel.rows()
+                )
+        );
+        readyPageBatchStatusLabel.textProperty().bind(
+                readyPageBatchViewModel.statusMessageProperty()
+        );
+        readyPageBatchResultsList.setItems(
+                readyPageBatchViewModel.rowResults()
+        );
+        readyPageBatchResultsList.visibleProperty().bind(
+                Bindings.isNotEmpty(readyPageBatchViewModel.rowResults())
+        );
+        readyPageBatchResultsList.managedProperty().bind(
+                readyPageBatchResultsList.visibleProperty()
+        );
+        unassignedMediaPane.disableProperty().bind(
+                readyPageBatchViewModel.busyProperty()
+        );
+        reviewDetailsPane.disableProperty().bind(
+                readyPageBatchViewModel.busyProperty()
+        );
+        readyPageBatchViewModel.pendingPreflightProperty().addListener(
+                (observable, oldValue, newValue) -> {
+                    if (newValue != null) {
+                        confirmReadyPageBatch(newValue);
+                    }
+                }
+        );
+        readyPageBatchViewModel.lastResultProperty().addListener(
+                (observable, oldValue, newValue) -> showBatchOutcome(newValue)
+        );
         mediaLocationsMenuItem.setOnAction(event ->
                 openMediaLocationsWindow());
         scanAllMediaLocationsMenuItem.setOnAction(event ->
@@ -916,6 +979,79 @@ public final class ReviewQueueController {
                 editorViewModel.dirtyProperty().get()
         )) {
             action.run();
+        }
+    }
+
+    private void startReadyPageBatch() {
+        final List<ReviewQueueItem> pageSnapshot =
+                List.copyOf(viewModel.rows());
+
+        if (navigationGuard.mayNavigateAway(
+                editorViewModel.dirtyProperty().get()
+        )) {
+            readyPageBatchViewModel.startPreflight(pageSnapshot);
+        }
+    }
+
+    private void confirmReadyPageBatch(ReadyPageBatchPreflight preflight) {
+        final ButtonType withoutRename = new ButtonType(
+                "Create Without Renaming",
+                ButtonBar.ButtonData.OTHER
+        );
+        final ButtonType withRename = new ButtonType(
+                "Create and Rename",
+                ButtonBar.ButtonData.OTHER
+        );
+        final Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+        alert.initOwner(ownerWindow());
+        alert.setTitle("Process Current-Page READY Rows");
+        alert.setHeaderText("Choose how to create Scenes for "
+                + preflight.eligibleCount() + " eligible rows.");
+        alert.setContentText(preflightText(preflight));
+        alert.getButtonTypes().setAll(
+                withoutRename,
+                withRename,
+                ButtonType.CANCEL
+        );
+        final Button cancelButton = (Button) alert.getDialogPane()
+                .lookupButton(ButtonType.CANCEL);
+        cancelButton.setDefaultButton(true);
+
+        final ButtonType choice = alert.showAndWait().orElse(ButtonType.CANCEL);
+
+        if (choice.equals(withoutRename)) {
+            editorViewModel.resetChanges();
+            readyPageBatchViewModel.execute(
+                    ReadyPageBatchMode.CREATE_WITHOUT_RENAMING
+            );
+        } else if (choice.equals(withRename)) {
+            editorViewModel.resetChanges();
+            readyPageBatchViewModel.execute(
+                    ReadyPageBatchMode.CREATE_AND_RENAME
+            );
+        } else {
+            readyPageBatchViewModel.cancel();
+        }
+    }
+
+    private String preflightText(ReadyPageBatchPreflight preflight) {
+        return "Only READY rows captured from the currently displayed page "
+                + "are affected.\n\nDisplayed rows considered: "
+                + preflight.displayedRows()
+                + "\nDisplayed READY candidates: "
+                + preflight.initialReadyCandidates()
+                + "\nCurrently eligible: " + preflight.eligibleCount()
+                + "\nNo longer READY: "
+                + preflight.excludedNoLongerReady()
+                + "\nAlready assigned: "
+                + preflight.excludedAlreadyAssigned()
+                + "\nMissing media records: " + preflight.excludedMissing()
+                + "\nPreflight failures: " + preflight.preflightFailures();
+    }
+
+    private void showBatchOutcome(ReadyPageBatchResult result) {
+        if (result != null && result.renameFailures() > 0) {
+            reviewTabs.getSelectionModel().select(1);
         }
     }
 

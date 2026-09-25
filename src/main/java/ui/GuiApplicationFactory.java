@@ -34,6 +34,7 @@ import service.MediaRenameService;
 import service.OriginalMovieSelector;
 import service.EntityManagementService;
 import service.SceneReviewDraftFactory;
+import service.ReadyPageBatchService;
 import service.SceneReviewRenamePreviewService;
 import service.SceneReviewWorkflowService;
 import ui.review.DefaultSceneReviewDraftLoader;
@@ -41,6 +42,7 @@ import ui.review.JavaFxEntityDialogLauncher;
 import ui.review.ReviewNavigationGuard;
 import ui.review.ReviewQueueController;
 import ui.review.ReviewQueueViewModel;
+import ui.review.ReadyPageBatchViewModel;
 import ui.review.ScanRefreshCoordinator;
 import ui.review.SceneReviewEditorViewModel;
 import ui.review.SceneReviewQueueViewModel;
@@ -105,6 +107,20 @@ public final class GuiApplicationFactory {
                         backgroundExecutor,
                         Platform::runLater
                 );
+        final SceneReviewWorkflowService sceneReviewWorkflowService =
+                createSceneReviewWorkflowService(
+                        databaseManager,
+                        catalogService,
+                        mediaFileRepository
+                );
+        final SceneReviewDraftFactory sceneReviewDraftFactory =
+                new SceneReviewDraftFactory(
+                        new SceneRepository(databaseManager),
+                        new MovieRepository(databaseManager),
+                        new OriginalMovieSelector(
+                                new MovieRepository(databaseManager)
+                        )
+                );
         final MediaLibraryViewModel mediaLibraryViewModel =
                 new MediaLibraryViewModel(
                         new MediaLibraryService(
@@ -118,21 +134,9 @@ public final class GuiApplicationFactory {
                 );
         final SceneReviewEditorViewModel editorViewModel =
                 new SceneReviewEditorViewModel(
-                        createSceneReviewWorkflowService(
-                                databaseManager,
-                                catalogService,
-                                mediaFileRepository
-                        ),
+                        sceneReviewWorkflowService,
                         new DefaultSceneReviewDraftLoader(
-                                new SceneReviewDraftFactory(
-                                        new SceneRepository(databaseManager),
-                                        new MovieRepository(databaseManager),
-                                        new OriginalMovieSelector(
-                                                new MovieRepository(
-                                                        databaseManager
-                                                )
-                                        )
-                                )
+                                sceneReviewDraftFactory
                         ),
                         this::confirmAliasCreation,
                         new SceneReviewEditorViewModel.AliasPersistence() {
@@ -182,6 +186,25 @@ public final class GuiApplicationFactory {
                         this::confirmDiscardChanges,
                         viewModel::load,
                         mediaLibraryViewModel::load
+                );
+        final ReadyPageBatchViewModel readyPageBatchViewModel =
+                new ReadyPageBatchViewModel(
+                        new ReadyPageBatchService(
+                                mediaFileRepository,
+                                new MediaAssignmentRepository(databaseManager),
+                                indexingService,
+                                sceneReviewDraftFactory,
+                                sceneReviewWorkflowService
+                        ),
+                        backgroundExecutor,
+                        Platform::runLater,
+                        () -> {
+                            viewModel.load();
+                            sceneQueueViewModel.load();
+                            mediaLibraryViewModel.load();
+                            scanRefreshCoordinator
+                                    .consumePendingAfterExternalRefresh();
+                        }
                 );
         final MediaLocationService mediaLocationService =
                 new MediaLocationService(
@@ -268,6 +291,7 @@ public final class GuiApplicationFactory {
                         viewModel,
                         editorViewModel,
                         sceneQueueViewModel,
+                        readyPageBatchViewModel,
                         new JavaFxEntityDialogLauncher(
                                 entityManagementService,
                                 suggestionService,
