@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.CheckBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+<VBox xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml" fx:controller="ui.context.ContextCandidateController" spacing="8" styleClass="javdb-root">
+    <padding><Insets top="12" right="12" bottom="12" left="12"/></padding>
+    <Label text="Role-neutral context segments from structurally valid, currently unassigned filenames. Exact catalog matches are evidence only; this screen makes no changes." wrapText="true"/>
+    <HBox spacing="8"><CheckBox fx:id="attentionOnlyCheckBox" text="Show unresolved or multiple exact matches" selected="true"/><Label text="Candidate contains"/><TextField fx:id="candidateFilterField" HBox.hgrow="ALWAYS"/><Button fx:id="refreshButton" text="Refresh"/></HBox>
+    <Label fx:id="errorLabel" styleClass="error-label"/>
+    <Label fx:id="emptyLabel" text="No context candidates match this view." styleClass="empty-state"/>
+    <TableView fx:id="candidatesTable" VBox.vgrow="ALWAYS"><columns>
+        <TableColumn fx:id="candidateColumn" text="Context candidate" prefWidth="170"/>
+        <TableColumn fx:id="countColumn" text="Files" prefWidth="65"/>
+        <TableColumn fx:id="positionColumn" text="Position counts" prefWidth="120"/>
+        <TableColumn fx:id="statusColumn" text="Exact-match status" prefWidth="160"/>
+        <TableColumn fx:id="matchesColumn" text="Exact catalog matches" prefWidth="270"/>
+        <TableColumn fx:id="examplesColumn" text="Representative filenames" prefWidth="330"/>
+    </columns></TableView>
+</VBox>

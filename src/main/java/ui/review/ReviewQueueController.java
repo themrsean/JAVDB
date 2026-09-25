@@ -38,6 +38,7 @@ import repository.MediaLibraryMetadataQuality;
 import service.MediaLibraryDetails;
 import service.MediaLibraryRow;
 import ui.performer.PerformerCandidateWindowLauncher;
+import ui.context.ContextCandidateWindowLauncher;
 
 import java.nio.file.Path;
 import java.util.Objects;
@@ -61,6 +62,7 @@ public final class ReviewQueueController {
     private final ScanRefreshCoordinator scanRefreshCoordinator;
     private final MediaLibraryViewModel mediaLibraryViewModel;
     private final PerformerCandidateWindowLauncher performerCandidateWindowLauncher;
+    private final ContextCandidateWindowLauncher contextCandidateWindowLauncher;
     private final Path databasePath;
     private boolean restoringSelection;
 
@@ -138,6 +140,8 @@ public final class ReviewQueueController {
     private MenuItem scanAllMediaLocationsMenuItem;
     @FXML
     private MenuItem performerCandidatesMenuItem;
+    @FXML
+    private MenuItem contextCandidatesMenuItem;
     @FXML
     private Button scanMediaButton;
     @FXML
@@ -307,6 +311,7 @@ public final class ReviewQueueController {
             ScanRefreshCoordinator scanRefreshCoordinator,
             MediaLibraryViewModel mediaLibraryViewModel,
             PerformerCandidateWindowLauncher performerCandidateWindowLauncher,
+            ContextCandidateWindowLauncher contextCandidateWindowLauncher,
             Path databasePath) {
 
         this.viewModel = Objects.requireNonNull(
@@ -360,6 +365,10 @@ public final class ReviewQueueController {
         this.performerCandidateWindowLauncher = Objects.requireNonNull(
                 performerCandidateWindowLauncher,
                 "Performer candidate window launcher must not be null"
+        );
+        this.contextCandidateWindowLauncher = Objects.requireNonNull(
+                contextCandidateWindowLauncher,
+                "Context candidate window launcher must not be null"
         );
         this.databasePath = Objects.requireNonNull(
                 databasePath,
@@ -501,6 +510,8 @@ public final class ReviewQueueController {
                 openMediaLocationsWindow());
         performerCandidatesMenuItem.setOnAction(event ->
                 performerCandidateWindowLauncher.open(ownerWindow()));
+        contextCandidatesMenuItem.setOnAction(event ->
+                contextCandidateWindowLauncher.open(ownerWindow()));
         scanMediaButton.setOnAction(event -> openMediaLocationsWindow());
         refreshMediaQueueButton.setOnAction(event ->
                 scanRefreshCoordinator.refreshPendingScanResults());

@@ -751,6 +751,26 @@ selected count; each candidate is rechecked before creation, processed
 independently, and reported as created, already resolved, or failed. Batch
 creation never creates aliases or indexes media.
 
+### Context Candidate Review
+
+`File > Review Context Candidates...` is a read-only diagnostic view of the
+role-neutral context segments before a title in structurally valid, currently
+unassigned filenames. It groups text case-insensitively, counts each candidate
+at most once per media file, and shows affected-file totals, first/second/third
+position evidence, representative filenames, and exact catalog matches.
+
+An exact Publisher, Series, or Movie match is shown as evidence (including the
+Publisher for matching Series and Movies). A candidate with more than one exact
+match remains explicitly ambiguous. The default view puts unresolved and
+multiple-match rows first, then orders by affected files and deterministic
+name; text and attention-only filters apply to the already loaded list.
+
+Context position is never a role classification, and prefix or substring
+suggestions do not classify a row. Opening, refreshing, filtering, and
+selecting this view creates no entities, aliases, scenes, assignments, or index
+records. Explicit Publisher/Series/Movie creation and alias mapping from this
+evidence remain the next deferred workflow, as does READY-page batch indexing.
+
 ## Database Backup And Restore
 
 Do not casually copy an active SQLite database file, especially when WAL mode is

@@ -52,6 +52,9 @@ import ui.library.MediaLibraryViewModel;
 import ui.performer.JavaFxPerformerCandidateWindowLauncher;
 import ui.performer.PerformerCandidateViewModel;
 import ui.performer.PerformerCandidateWindowLauncher;
+import ui.context.ContextCandidateWindowLauncher;
+import ui.context.ContextCandidateViewModel;
+import ui.context.JavaFxContextCandidateWindowLauncher;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -226,6 +229,19 @@ public final class GuiApplicationFactory {
                                 backgroundExecutor
                         )
                 );
+        final ContextCandidateWindowLauncher contextCandidateLauncher =
+                new JavaFxContextCandidateWindowLauncher(
+                        new ContextCandidateViewModel(
+                                new service.ContextCandidateReviewService(
+                                        new UnassignedMediaPathRepository(databaseManager),
+                                        new MediaFilenameParser(),
+                                        new EntitySuggestionRepository(databaseManager),
+                                        new PublisherRepository(databaseManager)
+                                ),
+                                backgroundExecutor,
+                                Platform::runLater
+                        )
+                );
         final ReviewQueueController controller =
                 new ReviewQueueController(
                         viewModel,
@@ -287,6 +303,7 @@ public final class GuiApplicationFactory {
                         scanRefreshCoordinator,
                         mediaLibraryViewModel,
                         performerCandidateLauncher,
+                        contextCandidateLauncher,
                         databaseManager.getDatabasePath()
                 );
 
