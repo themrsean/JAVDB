@@ -43,6 +43,8 @@ class GuiReviewQueueServiceTest {
             UUID.fromString("55555555-fafa-5555-fafa-555555555555");
     private static final UUID CONFLICT_MEDIA_ID =
             UUID.fromString("66666666-fafa-6666-fafa-666666666666");
+    private static final UUID NO_CONTEXT_MEDIA_ID =
+            UUID.fromString("88888888-fafa-8888-fafa-888888888888");
     private static final UUID SCENE_ID =
             UUID.fromString("77777777-fafa-7777-fafa-777777777777");
     private static final long FILE_SIZE = 1_234L;
@@ -259,6 +261,37 @@ class GuiReviewQueueServiceTest {
         Assertions.assertAll(
                 () -> Assertions.assertEquals(
                         FilenameMatchStatus.INVALID_FILENAME,
+                        details.matchStatus()
+                ),
+                () -> Assertions.assertEquals(
+                        FilenameGenerationStatus.REVIEW_REQUIRED.name(),
+                        details.canonicalRename().status()
+                )
+        );
+    }
+
+    @Test
+    @DisplayName("No-context filename stays review-required without crashing")
+    void noContextFilenameStaysReviewRequiredWithoutCrashing()
+            throws Exception {
+
+        mediaFileRepository.insert(mediaFile(
+                NO_CONTEXT_MEDIA_ID,
+                mediaDirectory.resolve(
+                        "(25.01.02) Scene Title - Performer One.mp4"
+                ),
+                WIDTH,
+                HEIGHT
+        ));
+
+        final ReviewDetails details = service.loadPage(
+                ReviewQueueFilter.firstPage()
+        ).details().stream().filter(detail -> NO_CONTEXT_MEDIA_ID.equals(
+                detail.mediaId())).findFirst().orElseThrow();
+
+        Assertions.assertAll(
+                () -> Assertions.assertEquals(
+                        FilenameMatchStatus.REVIEW_REQUIRED,
                         details.matchStatus()
                 ),
                 () -> Assertions.assertEquals(

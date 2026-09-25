@@ -342,9 +342,10 @@ public final class FilenameMetadataMatcher {
 
         if (performerMatches.stream().anyMatch(match -> match.id() == null)) {
             status = FilenameMatchStatus.UNRESOLVED;
-        } else if (interpretations.isEmpty()
-                && !parsed.contextSegments().isEmpty()) {
-            status = FilenameMatchStatus.UNRESOLVED;
+        } else if (interpretations.isEmpty()) {
+            status = parsed.contextSegments().isEmpty()
+                    ? FilenameMatchStatus.REVIEW_REQUIRED
+                    : FilenameMatchStatus.UNRESOLVED;
         } else if (hasCrossEntityAmbiguity(parsed)
                 || interpretations.size() > 1
                 && interpretations.getFirst().score()

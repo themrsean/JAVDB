@@ -171,6 +171,22 @@ class FilenameMetadataMatcherTest {
     }
 
     @Test
+    @DisplayName("No-context filename requires review instead of READY")
+    void noContextFilenameRequiresReviewInsteadOfReady() throws Exception {
+        final FilenameMatchResult result = matcher.match(parser.parse(Path.of(
+                "(25.01.02) Scene Title - Performer One.mp4"
+        )));
+
+        Assertions.assertAll(
+                () -> Assertions.assertEquals(
+                        FilenameMatchStatus.REVIEW_REQUIRED,
+                        result.status()
+                ),
+                () -> Assertions.assertNull(result.bestInterpretation())
+        );
+    }
+
+    @Test
     @DisplayName("Invalid filename remains invalid")
     void invalidFilenameRemainsInvalid() throws Exception {
         final FilenameMatchResult result = matcher.match(parser.parse(Path.of(
