@@ -6,12 +6,15 @@ import repository.EntitySuggestion;
 import repository.EntitySuggestionRepository;
 import repository.MatchField;
 import repository.MatchRank;
+import repository.PublisherRepository;
 import repository.SuggestionQuery;
 
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -23,13 +26,19 @@ public final class FilenameMetadataMatcher {
     private static final int MAXIMUM_CONTEXT_SEGMENTS = 3;
 
     private final EntitySuggestionRepository suggestionRepository;
+    private final PublisherRepository publisherRepository;
 
     public FilenameMetadataMatcher(
-            EntitySuggestionRepository suggestionRepository) {
+            EntitySuggestionRepository suggestionRepository,
+            PublisherRepository publisherRepository) {
 
         this.suggestionRepository = Objects.requireNonNull(
                 suggestionRepository,
                 "Entity suggestion repository must not be null"
+        );
+        this.publisherRepository = Objects.requireNonNull(
+                publisherRepository,
+                "Publisher repository must not be null"
         );
     }
 
@@ -62,7 +71,7 @@ public final class FilenameMetadataMatcher {
         final List<EntityMatch> performerMatches =
                 matchPerformers(parsed.performerCandidates());
         final List<FilenameInterpretation> interpretations =
-                generateInterpretations(parsed, performerMatches);
+                generateInterpretations(parsed, performerMatches, new HashMap<>());
         final List<FilenameInterpretation> sortedInterpretations =
                 interpretations.stream()
                         .sorted(Comparator
@@ -119,25 +128,26 @@ public final class FilenameMetadataMatcher {
 
     private List<FilenameInterpretation> generateInterpretations(
             ParsedMediaFilename parsed,
-            List<EntityMatch> performerMatches) throws SQLException {
+            List<EntityMatch> performerMatches,
+            Map<UUID, String> publisherNames) throws SQLException {
 
         final List<FilenameInterpretation> interpretations = new ArrayList<>();
         final List<String> context = parsed.contextSegments();
 
         if (context.size() <= MAXIMUM_CONTEXT_SEGMENTS) {
-            addInterpretation(interpretations, parsed, performerMatches,
+            addInterpretation(interpretations, parsed, performerMatches, publisherNames,
                     roleSet("PUBLISHER"));
-            addInterpretation(interpretations, parsed, performerMatches,
+            addInterpretation(interpretations, parsed, performerMatches, publisherNames,
                     roleSet("SERIES"));
-            addInterpretation(interpretations, parsed, performerMatches,
+            addInterpretation(interpretations, parsed, performerMatches, publisherNames,
                     roleSet("MOVIE"));
-            addInterpretation(interpretations, parsed, performerMatches,
+            addInterpretation(interpretations, parsed, performerMatches, publisherNames,
                     roleSet("PUBLISHER", "SERIES"));
-            addInterpretation(interpretations, parsed, performerMatches,
+            addInterpretation(interpretations, parsed, performerMatches, publisherNames,
                     roleSet("PUBLISHER", "MOVIE"));
-            addInterpretation(interpretations, parsed, performerMatches,
+            addInterpretation(interpretations, parsed, performerMatches, publisherNames,
                     roleSet("SERIES", "MOVIE"));
-            addInterpretation(interpretations, parsed, performerMatches,
+            addInterpretation(interpretations, parsed, performerMatches, publisherNames,
                     roleSet("PUBLISHER", "SERIES", "MOVIE"));
         }
 
@@ -155,6 +165,7 @@ public final class FilenameMetadataMatcher {
             List<FilenameInterpretation> interpretations,
             ParsedMediaFilename parsed,
             List<EntityMatch> performerMatches,
+            Map<UUID, String> publisherNames,
             List<String> roles) throws SQLException {
 
         if (roles.size() == parsed.contextSegments().size()) {
@@ -190,25 +201,15 @@ public final class FilenameMetadataMatcher {
             if (valid) {
                 if (publisher.id() == null && series.id() != null
                         && series.publisherId() != null) {
-                    publisher = new EntityMatch(
-                            series.publisherId(),
-                            null,
-                            null,
-                            MatchSource.INFERRED_FROM_SERIES,
-                            null
-                    );
+                    publisher = inferredPublisher(series.publisherId(),
+                            MatchSource.INFERRED_FROM_SERIES, publisherNames);
                     score = score - INFERRED_PENALTY;
                 }
 
                 if (publisher.id() == null && movie.id() != null
                         && movie.publisherId() != null) {
-                    publisher = new EntityMatch(
-                            movie.publisherId(),
-                            null,
-                            null,
-                            MatchSource.INFERRED_FROM_MOVIE,
-                            null
-                    );
+                    publisher = inferredPublisher(movie.publisherId(),
+                            MatchSource.INFERRED_FROM_MOVIE, publisherNames);
                     score = score - INFERRED_PENALTY;
                 }
 
@@ -240,6 +241,21 @@ public final class FilenameMetadataMatcher {
                 ));
             }
         }
+    }
+
+    private EntityMatch inferredPublisher(UUID publisherId, MatchSource source,
+            Map<UUID, String> publisherNames) throws SQLException {
+
+        String name = publisherNames.get(publisherId);
+        if (name == null) {
+            name = publisherRepository.findById(publisherId)
+                    .orElseThrow(() -> new IllegalArgumentException(
+                            "Publisher not found for inferred relationship: "
+                                    + publisherId))
+                    .getName();
+            publisherNames.put(publisherId, name);
+        }
+        return new EntityMatch(publisherId, name, null, source, null);
     }
 
     private EntityMatch exactPublisher(String candidate) throws SQLException {

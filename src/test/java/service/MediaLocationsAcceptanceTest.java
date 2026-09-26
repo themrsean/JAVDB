@@ -17,6 +17,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import repository.EntitySuggestionRepository;
+import repository.PublisherRepository;
 import repository.MediaAssignmentRepository;
 import repository.MediaFileRepository;
 import repository.MediaLocationRepository;
@@ -320,7 +321,8 @@ class MediaLocationsAcceptanceTest {
                                 new FilenameMetadataMatcher(
                                         new EntitySuggestionRepository(
                                                 databaseManager
-                                        )
+                                        ),
+                                        new PublisherRepository(databaseManager)
                                 )
                         ),
                         mediaFileRepository

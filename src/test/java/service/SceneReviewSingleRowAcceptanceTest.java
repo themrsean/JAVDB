@@ -818,7 +818,8 @@ class SceneReviewSingleRowAcceptanceTest {
                             new FilenameMetadataMatcher(
                                     new EntitySuggestionRepository(
                                             databaseManager
-                                    )
+                                    ),
+                                    new PublisherRepository(databaseManager)
                             ),
                             catalogService,
                             sceneRepository,

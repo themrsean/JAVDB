@@ -146,7 +146,8 @@ class ReadyPageBatchServiceTest {
                 assignmentRepository,
                 new MediaFilenameParser(),
                 new FilenameMetadataMatcher(
-                        new EntitySuggestionRepository(databaseManager)
+                        new EntitySuggestionRepository(databaseManager),
+                        new PublisherRepository(databaseManager)
                 )
         );
         draftFactory = new SceneReviewDraftFactory(

@@ -245,7 +245,8 @@ public final class JAVDBApplication {
                 mediaFileRepository,
                 new MediaAssignmentRepository(databaseManager),
                 new MediaFilenameParser(),
-                new FilenameMetadataMatcher(suggestionRepository),
+                new FilenameMetadataMatcher(suggestionRepository,
+                        new PublisherRepository(databaseManager)),
                 catalogService,
                 sceneRepository,
                 movieRepository

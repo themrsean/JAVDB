@@ -103,7 +103,8 @@ class CliCommandIntegrationTest {
                 new MediaAssignmentRepository(databaseManager),
                 new MediaFilenameParser(),
                 new FilenameMetadataMatcher(
-                        new EntitySuggestionRepository(databaseManager)
+                        new EntitySuggestionRepository(databaseManager),
+                        new PublisherRepository(databaseManager)
                 ),
                 catalogService,
                 sceneRepository,

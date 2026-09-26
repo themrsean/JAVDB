@@ -76,7 +76,8 @@ class MediaFilenameIndexingServiceTest {
                 assignmentRepository,
                 new MediaFilenameParser(),
                 new FilenameMetadataMatcher(
-                        new EntitySuggestionRepository(databaseManager)
+                        new EntitySuggestionRepository(databaseManager),
+                        new PublisherRepository(databaseManager)
                 ),
                 new CatalogService(
                         new PublisherRepository(databaseManager),

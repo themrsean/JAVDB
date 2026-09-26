@@ -5,10 +5,12 @@ import database.SchemaManager;
 import media.FilenameGenerationStatus;
 import media.MediaFilenameParser;
 import model.MediaFile;
+import model.Movie;
 import model.Performer;
 import model.PerformerCategory;
 import model.Publisher;
 import model.Scene;
+import model.Series;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -17,9 +19,11 @@ import org.junit.jupiter.api.io.TempDir;
 import repository.EntitySuggestionRepository;
 import repository.MediaAssignmentRepository;
 import repository.MediaFileRepository;
+import repository.MovieRepository;
 import repository.PerformerRepository;
 import repository.PublisherRepository;
 import repository.SceneRepository;
+import repository.SeriesRepository;
 import repository.UnassignedMediaFilter;
 
 import java.nio.file.Files;
@@ -48,6 +52,10 @@ class GuiReviewQueueServiceTest {
             UUID.fromString("88888888-fafa-8888-fafa-888888888888");
     private static final UUID UNRESOLVED_MEDIA_ID =
             UUID.fromString("99999999-fafa-9999-fafa-999999999999");
+    private static final UUID SERIES_MEDIA_ID =
+            UUID.fromString("aaaaaaaa-fafa-aaaa-fafa-aaaaaaaaaaaa");
+    private static final UUID MOVIE_MEDIA_ID =
+            UUID.fromString("bbbbbbbb-fafa-bbbb-fafa-bbbbbbbbbbbb");
     private static final UUID SCENE_ID =
             UUID.fromString("77777777-fafa-7777-fafa-777777777777");
     private static final long FILE_SIZE = 1_234L;
@@ -61,6 +69,9 @@ class GuiReviewQueueServiceTest {
     private MediaFileRepository mediaFileRepository;
     private GuiReviewQueueService service;
     private Path mediaDirectory;
+    private Publisher publisher;
+    private SeriesRepository seriesRepository;
+    private MovieRepository movieRepository;
 
     @BeforeEach
     void initializeDatabase() throws Exception {
@@ -76,20 +87,22 @@ class GuiReviewQueueServiceTest {
                 new MediaAssignmentRepository(databaseManager);
         final SceneRepository sceneRepository =
                 new SceneRepository(databaseManager);
+        seriesRepository = new SeriesRepository(databaseManager);
+        movieRepository = new MovieRepository(databaseManager);
         service = new GuiReviewQueueService(
                 new MediaFilenameIndexingService(
                         mediaFileRepository,
                         assignmentRepository,
                         new MediaFilenameParser(),
                         new FilenameMetadataMatcher(
-                                new EntitySuggestionRepository(databaseManager)
+                                new EntitySuggestionRepository(databaseManager),
+                                new PublisherRepository(databaseManager)
                         )
                 ),
                 mediaFileRepository
         );
 
-        final Publisher publisher =
-                new Publisher(PUBLISHER_ID, "Studio", List.of("Alias"));
+        publisher = new Publisher(PUBLISHER_ID, "Studio", List.of("Alias"));
         final Performer performer = new Performer(
                 PERFORMER_ID,
                 "Performer One",
@@ -250,6 +263,61 @@ class GuiReviewQueueServiceTest {
     }
 
     @Test
+    @DisplayName("Series-derived publisher produces a complete READY queue preview")
+    void seriesDerivedPublisherProducesCompleteReadyQueuePreview()
+            throws Exception {
+        seriesRepository.insert(new Series(UUID.fromString(
+                "cccccccc-fafa-cccc-fafa-cccccccccccc"), "Unique Series", publisher));
+        mediaFileRepository.insert(mediaFile(SERIES_MEDIA_ID,
+                mediaDirectory.resolve(
+                        "(25.01.02) Unique Series - Scene Title - P Alias.mp4"),
+                WIDTH, HEIGHT));
+
+        final ReviewQueuePage page = service.loadPage(ReviewQueueFilter.firstPage());
+        final ReviewQueueItem item = item(page, SERIES_MEDIA_ID);
+        final ReviewDetails details = details(page, SERIES_MEDIA_ID);
+
+        Assertions.assertAll(
+                () -> Assertions.assertEquals(FilenameMatchStatus.READY,
+                        item.matchStatus()),
+                () -> Assertions.assertEquals("Studio", item.publisherName()),
+                () -> Assertions.assertEquals("Studio", details.publisherResolution()),
+                () -> Assertions.assertFalse(
+                        details.canonicalRename().proposedFilename().isBlank()),
+                () -> Assertions.assertTrue(details.canonicalRename()
+                        .proposedFilename().contains("Studio"))
+        );
+    }
+
+    @Test
+    @DisplayName("Movie-derived publisher produces a complete READY queue preview")
+    void movieDerivedPublisherProducesCompleteReadyQueuePreview()
+            throws Exception {
+        movieRepository.insert(new Movie(UUID.fromString(
+                "dddddddd-fafa-dddd-fafa-dddddddddddd"), "Unique Movie", null,
+                publisher, List.of(), false, List.of()));
+        mediaFileRepository.insert(mediaFile(MOVIE_MEDIA_ID,
+                mediaDirectory.resolve(
+                        "(25.01.02) Unique Movie - Scene Title - P Alias.mp4"),
+                WIDTH, HEIGHT));
+
+        final ReviewQueuePage page = service.loadPage(ReviewQueueFilter.firstPage());
+        final ReviewQueueItem item = item(page, MOVIE_MEDIA_ID);
+        final ReviewDetails details = details(page, MOVIE_MEDIA_ID);
+
+        Assertions.assertAll(
+                () -> Assertions.assertEquals(FilenameMatchStatus.READY,
+                        item.matchStatus()),
+                () -> Assertions.assertEquals("Studio", item.publisherName()),
+                () -> Assertions.assertEquals("Studio", details.publisherResolution()),
+                () -> Assertions.assertFalse(
+                        details.canonicalRename().proposedFilename().isBlank()),
+                () -> Assertions.assertTrue(details.canonicalRename()
+                        .proposedFilename().contains("Studio"))
+        );
+    }
+
+    @Test
     @DisplayName("Invalid filename does not receive guessed canonical filename")
     void invalidFilenameDoesNotReceiveGuessedCanonicalFilename()
             throws Exception {
@@ -383,5 +451,16 @@ class GuiReviewQueueServiceTest {
                 height,
                 LAST_MODIFIED
         );
+    }
+
+    private ReviewQueueItem item(ReviewQueuePage page, UUID mediaId) {
+        return page.items().stream().filter(item -> mediaId.equals(item.mediaId()))
+                .findFirst().orElseThrow();
+    }
+
+    private ReviewDetails details(ReviewQueuePage page, UUID mediaId) {
+        return page.details().stream()
+                .filter(details -> mediaId.equals(details.mediaId()))
+                .findFirst().orElseThrow();
     }
 }

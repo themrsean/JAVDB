@@ -13,6 +13,7 @@ import repository.MediaAssignmentRepository;
 import repository.MediaFileRepository;
 import repository.MediaLibraryFilter;
 import repository.MediaLibraryRepository;
+import repository.PublisherRepository;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -39,7 +40,8 @@ class MediaLibraryServiceTest {
                         assignmentRepository,
                         new MediaFilenameParser(),
                         new FilenameMetadataMatcher(
-                                new EntitySuggestionRepository(databaseManager))
+                                new EntitySuggestionRepository(databaseManager),
+                                new PublisherRepository(databaseManager))
                 );
         final Path path = temporaryDirectory.resolve(
                 "(26.01.02) Unknown - Example - Nobody.mp4");
@@ -118,7 +120,8 @@ class MediaLibraryServiceTest {
                         mediaRepository, assignmentRepository,
                         new MediaFilenameParser(),
                         new FilenameMetadataMatcher(
-                                new EntitySuggestionRepository(databaseManager)));
+                                new EntitySuggestionRepository(databaseManager),
+                                new PublisherRepository(databaseManager)));
         mediaRepository.insert(media("a.mp4"));
         mediaRepository.insert(media("b.mp4"));
         final MediaLibraryService service = new MediaLibraryService(

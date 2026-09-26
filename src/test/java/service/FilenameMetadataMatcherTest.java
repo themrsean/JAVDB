@@ -36,6 +36,8 @@ class FilenameMetadataMatcherTest {
             UUID.fromString("33333333-face-4444-face-333333333333");
     private static final UUID MOVIE_ID =
             UUID.fromString("44444444-face-4444-face-444444444444");
+    private static final UUID OTHER_MOVIE_ID =
+            UUID.fromString("44444444-face-5555-face-444444444444");
     private static final UUID PERFORMER_ID =
             UUID.fromString("55555555-face-5555-face-555555555555");
     private static final UUID OTHER_PERFORMER_ID =
@@ -43,6 +45,7 @@ class FilenameMetadataMatcherTest {
 
     private FilenameMetadataMatcher matcher;
     private MediaFilenameParser parser;
+    private MovieRepository movieRepository;
 
     @TempDir
     Path temporaryDirectory;
@@ -54,7 +57,8 @@ class FilenameMetadataMatcherTest {
         );
         new SchemaManager(databaseManager).initialize();
         matcher = new FilenameMetadataMatcher(
-                new EntitySuggestionRepository(databaseManager)
+                new EntitySuggestionRepository(databaseManager),
+                new PublisherRepository(databaseManager)
         );
         parser = new MediaFilenameParser();
 
@@ -100,7 +104,8 @@ class FilenameMetadataMatcherTest {
         new PublisherRepository(databaseManager).insert(otherPublisher);
         new SeriesRepository(databaseManager).insert(series);
         new SeriesRepository(databaseManager).insert(uniqueSeries);
-        new MovieRepository(databaseManager).insert(movie);
+        movieRepository = new MovieRepository(databaseManager);
+        movieRepository.insert(movie);
         new PerformerRepository(databaseManager).insert(performer);
         new PerformerRepository(databaseManager).insert(otherPerformer);
     }
@@ -119,6 +124,8 @@ class FilenameMetadataMatcherTest {
                         result.status()),
                 () -> Assertions.assertEquals(PUBLISHER_ID,
                         result.bestInterpretation().publisher().id()),
+                () -> Assertions.assertEquals("Studio",
+                        result.bestInterpretation().publisher().name()),
                 () -> Assertions.assertEquals(SERIES_ID,
                         result.bestInterpretation().series().id()),
                 () -> Assertions.assertEquals(MOVIE_ID,
@@ -139,12 +146,69 @@ class FilenameMetadataMatcherTest {
         Assertions.assertAll(
                 () -> Assertions.assertEquals(FilenameMatchStatus.READY,
                         result.status()),
+                () -> Assertions.assertEquals(PUBLISHER_ID,
+                        result.bestInterpretation().publisher().id()),
+                () -> Assertions.assertEquals("Studio",
+                        result.bestInterpretation().publisher().name()),
                 () -> Assertions.assertEquals(MatchSource.INFERRED_FROM_SERIES,
                         result.bestInterpretation().publisher().source()),
                 () -> Assertions.assertEquals(MatchSource.EXPLICIT_ALIAS,
                         result.bestInterpretation().performers()
                                 .getFirst().source())
         );
+    }
+
+    @Test
+    @DisplayName("Publisher can be inferred from exact movie")
+    void publisherCanBeInferredFromExactMovie() throws Exception {
+        final FilenameMatchResult result = matcher.match(parser.parse(Path.of(
+                "(25.01.02) Movie - Scene Title - P One.mp4"
+        )));
+
+        Assertions.assertAll(
+                () -> Assertions.assertEquals(FilenameMatchStatus.READY,
+                        result.status()),
+                () -> Assertions.assertEquals(PUBLISHER_ID,
+                        result.bestInterpretation().publisher().id()),
+                () -> Assertions.assertEquals("Studio",
+                        result.bestInterpretation().publisher().name()),
+                () -> Assertions.assertEquals(MatchSource.INFERRED_FROM_MOVIE,
+                        result.bestInterpretation().publisher().source())
+        );
+    }
+
+    @Test
+    @DisplayName("Series and movie sharing a publisher infer its real name")
+    void seriesAndMovieWithSharedPublisherInferNamedPublisher() throws Exception {
+        final FilenameMatchResult result = matcher.match(parser.parse(Path.of(
+                "(25.01.02) Unique Series - Movie - Scene Title - P One.mp4"
+        )));
+
+        Assertions.assertAll(
+                () -> Assertions.assertEquals(FilenameMatchStatus.READY,
+                        result.status()),
+                () -> Assertions.assertEquals(PUBLISHER_ID,
+                        result.bestInterpretation().publisher().id()),
+                () -> Assertions.assertEquals("Studio",
+                        result.bestInterpretation().publisher().name()),
+                () -> Assertions.assertEquals(MatchSource.INFERRED_FROM_SERIES,
+                        result.bestInterpretation().publisher().source())
+        );
+    }
+
+    @Test
+    @DisplayName("Mismatched series and movie publisher relationships remain rejected")
+    void mismatchedSeriesAndMoviePublisherRelationshipsRemainRejected()
+            throws Exception {
+        movieRepository.insert(new Movie(OTHER_MOVIE_ID, "Other Movie", null,
+                new Publisher(OTHER_PUBLISHER_ID, "Series", List.of()), List.of(),
+                false, List.of()));
+
+        final FilenameMatchResult result = matcher.match(parser.parse(Path.of(
+                "(25.01.02) Unique Series - Other Movie - Scene Title - P One.mp4"
+        )));
+
+        Assertions.assertEquals(FilenameMatchStatus.UNRESOLVED, result.status());
     }
 
     @Test
