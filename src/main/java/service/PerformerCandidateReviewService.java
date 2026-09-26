@@ -9,6 +9,7 @@ import repository.MatchField;
 import repository.MatchRank;
 import repository.UnassignedMediaPathRepository;
 
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -40,6 +41,9 @@ public final class PerformerCandidateReviewService {
     public List<PerformerCandidate> loadCandidates() throws SQLException {
         final Map<String, Aggregate> aggregates = new LinkedHashMap<>();
         for (Path path : pathRepository.findAll()) {
+            if (!Files.exists(path)) {
+                continue;
+            }
             final var parsed = parser.parse(path);
             // Invalid filenames may expose partial segments; do not bootstrap from them.
             if (parsed.status() != FilenameParseStatus.VALID) continue;

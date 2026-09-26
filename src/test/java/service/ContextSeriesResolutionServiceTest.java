@@ -20,6 +20,7 @@ import repository.SearchRepository;
 import repository.SeriesRepository;
 import repository.UnassignedMediaPathRepository;
 
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.List;
@@ -55,8 +56,10 @@ class ContextSeriesResolutionServiceTest {
                 new MediaFilenameParser(), new EntitySuggestionRepository(database),
                 publishers);
         actions = new ContextSeriesResolutionService(review, entityManagement);
-        media.insert(new MediaFile(UUID.randomUUID(), temporaryDirectory.resolve(
-                "(25.01.01) Series Candidate - Title - Alice.mp4"),
+        final Path mediaPath = temporaryDirectory.resolve(
+                "(25.01.01) Series Candidate - Title - Alice.mp4");
+        Files.writeString(mediaPath, "fixture");
+        media.insert(new MediaFile(UUID.randomUUID(), mediaPath,
                 1, null, Duration.ofSeconds(1), 1, 1, 1));
     }
 

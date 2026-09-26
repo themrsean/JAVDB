@@ -9,6 +9,7 @@ import repository.PublisherRepository;
 import repository.SuggestionQuery;
 import repository.UnassignedMediaPathRepository;
 
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -48,6 +49,9 @@ public final class ContextCandidateReviewService implements ContextCandidateSour
         final Map<String, ResolvedSegment> resolutionCache = new HashMap<>();
         final Map<UUID, String> publisherNames = new HashMap<>();
         for (Path path : pathRepository.findAll()) {
+            if (!Files.exists(path)) {
+                continue;
+            }
             final var parsed = parser.parse(path);
             // A partial parse is deliberately not evidence for catalog work.
             if (parsed.status() != FilenameParseStatus.VALID) {

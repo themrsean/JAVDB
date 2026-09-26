@@ -18,6 +18,7 @@ import repository.PublisherRepository;
 import repository.SeriesRepository;
 import repository.UnassignedMediaPathRepository;
 
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.List;
@@ -185,6 +186,53 @@ class ContextCandidateReviewServiceTest {
         );
     }
 
+    @Test
+    void missingPathDoesNotContributeContextCountsPathsOrPublisherEvidence()
+            throws Exception {
+        final Publisher publisher = publisher("Studio");
+        final UUID missingMediaId = insert(
+                "(25.01.01) Studio - Missing Context - Title - Alice.mp4", false);
+        add("(25.01.02) Studio - Existing Context - Title - Alice.mp4");
+
+        final List<ContextCandidate> rows = service.loadCandidates();
+        final ContextCandidate existing = candidate("Existing Context");
+        final ContextPublisherEvidence evidence = evidence(existing, publisher);
+
+        Assertions.assertAll(
+                () -> Assertions.assertTrue(rows.stream().noneMatch(candidate ->
+                        candidate.text().equals("Missing Context"))),
+                () -> Assertions.assertEquals(1, existing.occurrences()),
+                () -> Assertions.assertEquals(1, existing.positionCounts().get(2)),
+                () -> Assertions.assertEquals(1,
+                        existing.contextLengthCounts().get(2)),
+                () -> Assertions.assertEquals(1,
+                        existing.representativePaths().size()),
+                () -> Assertions.assertTrue(Files.exists(
+                        existing.representativePaths().getFirst())),
+                () -> Assertions.assertEquals(1, evidence.affectedFiles()),
+                () -> Assertions.assertTrue(mediaFiles.findById(missingMediaId)
+                        .isPresent())
+        );
+    }
+
+    @Test
+    void correctedContextExcludesStaleTypoButRetainsItsDatabaseRecord()
+            throws Exception {
+        final UUID staleMediaId = insert(
+                "(25.01.01) Studoi - Title - Alice.mp4", false);
+        add("(25.01.01) Studio - Title - Alice.mp4");
+
+        final List<ContextCandidate> rows = service.loadCandidates();
+
+        Assertions.assertAll(
+                () -> Assertions.assertTrue(rows.stream().noneMatch(candidate ->
+                        candidate.text().equals("Studoi"))),
+                () -> Assertions.assertEquals(1, candidate("Studio").occurrences()),
+                () -> Assertions.assertTrue(mediaFiles.findById(staleMediaId)
+                        .isPresent())
+        );
+    }
+
     private ContextCandidate candidate(String text) throws Exception {
         return service.loadCandidates().stream()
                 .filter(candidate -> candidate.text().equalsIgnoreCase(text))
@@ -205,8 +253,17 @@ class ContextCandidateReviewServiceTest {
     }
 
     private void add(String name) throws Exception {
-        mediaFiles.insert(new MediaFile(UUID.randomUUID(),
-                temporaryDirectory.resolve(name), 1, null,
+        insert(name, true);
+    }
+
+    private UUID insert(String name, boolean physical) throws Exception {
+        final Path path = temporaryDirectory.resolve(name);
+        final UUID mediaId = UUID.randomUUID();
+        if (physical) {
+            Files.writeString(path, "fixture");
+        }
+        mediaFiles.insert(new MediaFile(mediaId, path, 1, null,
                 Duration.ofSeconds(1), 1, 1, 1));
+        return mediaId;
     }
 }

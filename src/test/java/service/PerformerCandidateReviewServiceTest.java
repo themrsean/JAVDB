@@ -20,6 +20,7 @@ import repository.SearchRepository;
 import repository.SeriesRepository;
 import repository.UnassignedMediaPathRepository;
 
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.List;
@@ -130,6 +131,59 @@ class PerformerCandidateReviewServiceTest {
         );
     }
 
+    @Test
+    void missingUnassignedPathDoesNotContributeCandidatesOrRemoveItsRow()
+            throws Exception {
+        final UUID missingMediaId = insert(
+                "(25.01.03) Title - Missing Performer.mp4", false);
+
+        final List<PerformerCandidate> rows = service.loadCandidates();
+
+        Assertions.assertAll(
+                () -> Assertions.assertTrue(rows.stream().noneMatch(candidate ->
+                        candidate.text().equals("Missing Performer"))),
+                () -> Assertions.assertTrue(mediaFiles.findById(missingMediaId)
+                        .isPresent())
+        );
+    }
+
+    @Test
+    void mixedExistingAndMissingPathsCountAndRepresentOnlyExistingFiles()
+            throws Exception {
+        add("(25.01.03) Existing - Title - Shared Performer.mp4");
+        insert("(25.01.04) Missing - Title - Shared Performer.mp4", false);
+
+        final PerformerCandidate candidate = candidate(service.loadCandidates(),
+                "Shared Performer");
+
+        Assertions.assertAll(
+                () -> Assertions.assertEquals(1, candidate.mediaCount()),
+                () -> Assertions.assertEquals(1,
+                        candidate.representativePaths().size()),
+                () -> Assertions.assertTrue(Files.exists(
+                        candidate.representativePaths().getFirst()))
+        );
+    }
+
+    @Test
+    void correctedFilenameExcludesStaleTypoButRetainsItsDatabaseRecord()
+            throws Exception {
+        final UUID staleMediaId = insert(
+                "(25.01.05) Studio - Title - Abela Danger.mp4", false);
+        add("(25.01.05) Studio - Title - Abella Danger.mp4");
+
+        final List<PerformerCandidate> rows = service.loadCandidates();
+
+        Assertions.assertAll(
+                () -> Assertions.assertTrue(rows.stream().noneMatch(candidate ->
+                        candidate.text().equals("Abela Danger"))),
+                () -> Assertions.assertEquals(1, candidate(rows, "Abella Danger")
+                        .mediaCount()),
+                () -> Assertions.assertTrue(mediaFiles.findById(staleMediaId)
+                        .isPresent())
+        );
+    }
+
     private PerformerCandidate candidate(List<PerformerCandidate> rows, String text) {
         return rows.stream().filter(row -> row.text().equals(text)).findFirst()
                 .orElseThrow();
@@ -142,8 +196,17 @@ class PerformerCandidateReviewServiceTest {
     }
 
     private void add(String name) throws Exception {
-        mediaFiles.insert(new MediaFile(UUID.randomUUID(),
-                temporaryDirectory.resolve(name), 1, null,
+        insert(name, true);
+    }
+
+    private UUID insert(String name, boolean physical) throws Exception {
+        final Path path = temporaryDirectory.resolve(name);
+        final UUID mediaId = UUID.randomUUID();
+        if (physical) {
+            Files.writeString(path, "fixture");
+        }
+        mediaFiles.insert(new MediaFile(mediaId, path, 1, null,
                 Duration.ofSeconds(1), 1, 1, 1));
+        return mediaId;
     }
 }

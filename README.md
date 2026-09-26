@@ -757,19 +757,20 @@ indexing does not guess or create them.
 ### Performer Candidate Review
 
 `File > Review Performer Candidates...` provides a read-only aggregation of
-performer candidates from structurally valid, currently unassigned filenames.
+performer candidates from structurally valid, currently unassigned, physically
+existing media filenames.
 Candidates are grouped case-insensitively, with occurrence counts and example
 filenames. The default view focuses unresolved names, ordered by descending
 affected-media count with deterministic name ties; text and minimum-count
 filters operate on the loaded list. Exact primary-name and
 alias matches are shown separately.
 
-Creating a performer is an explicit confirmed action and uses category
-`UNKNOWN`. Mapping a candidate to an existing performer is also explicit and
-adds the candidate as an alias only after confirmation; no candidates, aliases,
-or scenes are created simply by opening or refreshing the review. Invalid
-filenames are excluded conservatively. Refreshing performer candidates leaves a
-dirty scene-review draft intact and does not auto-index media.
+Creating a performer is an explicit confirmed action. Mapping a candidate to an
+existing performer is also explicit and adds the candidate as an alias only
+after confirmation; no candidates, aliases, or scenes are created simply by
+opening or refreshing the review. Invalid and currently missing filenames are
+excluded conservatively. Refreshing performer candidates leaves a dirty
+scene-review draft intact and does not auto-index media.
 
 Use the Category dropdown to explicitly choose `ACTRESS`, `ACTOR`, `OTHER`, or
 `UNKNOWN` (the default). Single creation and `Create Selected Performers` use
@@ -785,9 +786,10 @@ creation never creates aliases or indexes media.
 
 `File > Review Context Candidates...` is a read-only diagnostic view of the
 role-neutral context segments before a title in structurally valid, currently
-unassigned filenames. It groups text case-insensitively, counts each candidate
-at most once per media file, and shows affected-file totals, first/second/third
-position evidence, representative filenames, and exact catalog matches.
+unassigned, physically existing media filenames. It groups text
+case-insensitively, counts each candidate at most once per media file, and
+shows affected-file totals, first/second/third position evidence,
+representative filenames, and exact catalog matches.
 
 An exact Publisher, Series, or Movie match is shown as evidence (including the
 Publisher for matching Series and Movies). A candidate with more than one exact
@@ -808,6 +810,11 @@ Context position is never a role classification, and prefix or substring
 suggestions do not classify a row. Opening, refreshing, filtering, and
 selecting this view creates no entities, aliases, scenes, assignments, or index
 records.
+
+Both candidate reviews exclude a stored `media_file` when its path is currently
+missing, so stale paths do not affect candidates or evidence after an external
+rename. The record remains available for diagnosis in Media Library and is not
+deleted by Candidate Review.
 
 For an unresolved candidate only, `Create Publisher` opens the existing
 Publisher dialog with the candidate prefilled as its proposed primary name; the
