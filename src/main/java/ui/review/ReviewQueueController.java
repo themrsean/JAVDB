@@ -22,8 +22,6 @@ import model.Movie;
 import model.Performer;
 import model.Publisher;
 import model.Series;
-import service.EntityMatch;
-import service.FilenameInterpretation;
 import service.FilenameMatchStatus;
 import service.ReviewDetails;
 import service.ReviewMatchStatusFilter;
@@ -75,6 +73,7 @@ public final class ReviewQueueController {
     private final Path databasePath;
     private boolean restoringSelection;
     private boolean synchronizingStatusFilter;
+    private String selectedPublisherDisplayName = "";
 
     @FXML
     private TextField pathFilterField;
@@ -690,7 +689,7 @@ public final class ReviewQueueController {
         episodeEditorField.textProperty()
                 .bindBidirectional(editorViewModel.episodeProperty());
         saveWithoutRenameButton.disableProperty()
-                .bind(editorViewModel.saveEnabledProperty().not());
+                .bind(editorViewModel.verifiedSaveEnabledProperty().not());
         saveAndRenameButton.disableProperty()
                 .bind(editorViewModel.saveAndRenameEnabledProperty().not());
         saveNeedsReviewButton.disableProperty()
@@ -710,6 +709,9 @@ public final class ReviewQueueController {
         createPublisherButton.setOnAction(event -> createPublisher());
         createSeriesButton.setOnAction(event -> createSeries());
         createMovieButton.setOnAction(event -> createMovie());
+        createMovieButton.disableProperty().bind(
+                editorViewModel.selectedPublisherIdProperty().isNull()
+        );
         createPerformerButton.setOnAction(event -> createPerformer());
         applyInterpretationButton.setOnAction(event -> applyInterpretation());
         editorViewModel.lastSaveResultProperty().addListener(
@@ -1125,29 +1127,56 @@ public final class ReviewQueueController {
     }
 
     private void loadEditorDraft(ReviewDetails details) {
+        clearEditorSelectionState();
         if (details != null) {
-            selectedPerformersList.getItems()
-                    .setAll(details.resolvedPerformerNames());
             alternativesList.getItems()
                     .setAll(details.alternativeInterpretations()
                             .stream()
-                            .map(this::alternativeText)
+                            .map(ReviewEditorFieldState::alternativeText)
                             .toList());
             editorViewModel.loadUnassignedDetails(details);
+            final ReviewEditorFieldState fields =
+                    ReviewEditorFieldState.from(details);
+            populateAutocompleteFields(fields);
+            editorViewModel.setSelectedPerformerDisplayNames(
+                    fields.performers()
+            );
             refreshSelectedPerformers();
-        } else {
-            selectedPerformersList.getItems().clear();
-            alternativesList.getItems().clear();
         }
     }
 
     private void loadExistingSceneDraft(SceneReviewQueueItem item) {
+        clearEditorSelectionState();
         if (item != null) {
-            selectedPerformersList.getItems().clear();
-            alternativesList.getItems().clear();
             editorViewModel.loadExistingScene(item.sceneId());
-            refreshSelectedPerformers();
+            publisherAutocomplete.searchTextProperty().set(
+                    item.publisherName() == null ? "" : item.publisherName()
+            );
+            seriesAutocomplete.searchTextProperty().set(
+                    item.seriesTitle() == null ? "" : item.seriesTitle()
+            );
+            selectedPublisherDisplayName = item.publisherName() == null
+                    ? "" : item.publisherName();
         }
+    }
+
+    private void clearEditorSelectionState() {
+        publisherAutocomplete.clear();
+        seriesAutocomplete.clear();
+        movieAutocomplete.clear();
+        performerAutocomplete.clear();
+        selectedPerformersList.getItems().clear();
+        alternativesList.getItems().clear();
+        selectedPublisherDisplayName = "";
+        editorViewModel.clearDraft();
+    }
+
+    private void populateAutocompleteFields(ReviewEditorFieldState fields) {
+        publisherAutocomplete.searchTextProperty().set(fields.publisher());
+        selectedPublisherDisplayName = fields.publisher();
+        seriesAutocomplete.searchTextProperty().set(fields.series());
+        movieAutocomplete.searchTextProperty().set(fields.movie());
+        performerAutocomplete.searchTextProperty().set("");
     }
 
     private void createPublisher() {
@@ -1166,6 +1195,17 @@ public final class ReviewQueueController {
             editorViewModel.applyAlternative(
                     details.alternativeInterpretations().get(selectedIndex)
             );
+            publisherAutocomplete.clear();
+            seriesAutocomplete.clear();
+            movieAutocomplete.clear();
+            performerAutocomplete.clear();
+            final ReviewEditorFieldState fields = ReviewEditorFieldState.from(
+                    details.alternativeInterpretations().get(selectedIndex)
+            );
+            populateAutocompleteFields(fields);
+            editorViewModel.setSelectedPerformerDisplayNames(
+                    fields.performers()
+            );
             refreshSelectedPerformers();
         }
     }
@@ -1176,7 +1216,25 @@ public final class ReviewQueueController {
     }
 
     private void createMovie() {
-        entityDialogLauncher.createMovie(ownerWindow())
+        final java.util.UUID publisherId =
+                editorViewModel.selectedPublisherIdProperty().get();
+        if (publisherId == null) {
+            final Alert alert = new Alert(
+                    Alert.AlertType.WARNING,
+                    "Select or resolve a Publisher first.",
+                    ButtonType.OK
+            );
+            alert.initOwner(ownerWindow());
+            alert.setTitle("Create Movie");
+            alert.showAndWait();
+            return;
+        }
+        entityDialogLauncher.createMovieForPublisher(
+                        ownerWindow(),
+                        movieSearchField.getText(),
+                        publisherId,
+                        selectedPublisherDisplayName
+                )
                 .ifPresent(this::selectMovie);
     }
 
@@ -1187,6 +1245,7 @@ public final class ReviewQueueController {
 
     private void selectPublisher(Publisher publisher) {
         editorViewModel.selectedPublisherIdProperty().set(publisher.getId());
+        selectedPublisherDisplayName = publisher.getName();
         publisherSearchField.setText(publisher.getName());
     }
 
@@ -1196,6 +1255,7 @@ public final class ReviewQueueController {
                 series.getPublisher().getId()
         );
         seriesSearchField.setText(series.getTitle());
+        selectedPublisherDisplayName = series.getPublisher().getName();
         publisherSearchField.setText(series.getPublisher().getName());
     }
 
@@ -1230,6 +1290,7 @@ public final class ReviewQueueController {
         }
 
         publisherSearchField.setText(suggestion.displayName());
+        selectedPublisherDisplayName = suggestion.displayName();
         seriesAutocomplete.search();
     }
 
@@ -1390,19 +1451,6 @@ public final class ReviewQueueController {
         } else {
             table.getSelectionModel().select(nextIndex);
         }
-    }
-
-    private String alternativeText(FilenameInterpretation interpretation) {
-        return "Publisher="
-                + entityName(interpretation.publisher())
-                + ", Series="
-                + entityName(interpretation.series())
-                + ", Movie="
-                + entityName(interpretation.movie());
-    }
-
-    private String entityName(EntityMatch match) {
-        return match == null || match.name() == null ? "" : match.name();
     }
 
     private String detailsText(String field) {

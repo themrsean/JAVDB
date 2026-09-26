@@ -227,4 +227,50 @@ class EntityEditorDialogViewModelTest {
                 () -> Assertions.assertFalse(defaulted.compilationProperty().get())
         );
     }
+
+    @Test
+    @DisplayName("Known-publisher movie dialog accepts optional date and forces default compilation")
+    void knownPublisherMovieDialogUsesPreloadedPublisher() {
+        final java.util.concurrent.atomic.AtomicReference<UUID> publisherUsed =
+                new java.util.concurrent.atomic.AtomicReference<>();
+        final java.util.concurrent.atomic.AtomicReference<Boolean> compilationUsed =
+                new java.util.concurrent.atomic.AtomicReference<>();
+        final MovieEditorDialogViewModel viewModel =
+                new MovieEditorDialogViewModel(
+                        (title, date, publisherId, compilation) -> {
+                            publisherUsed.set(publisherId);
+                            compilationUsed.set(compilation);
+                            return new Movie(UUID.randomUUID(), title, date,
+                                    new Publisher(publisherId, "Brazzers", List.of()),
+                                    List.of(), compilation, List.of());
+                        },
+                        Runnable::run,
+                        Runnable::run,
+                        "Asspirations 2",
+                        PUBLISHER_ID
+                );
+
+        Assertions.assertAll(
+                () -> Assertions.assertEquals("Asspirations 2",
+                        viewModel.titleProperty().get()),
+                () -> Assertions.assertEquals(PUBLISHER_ID,
+                        viewModel.publisherIdProperty().get()),
+                () -> Assertions.assertTrue(
+                        viewModel.releaseDateTextProperty().get().isBlank()),
+                () -> Assertions.assertTrue(viewModel.saveEnabledProperty().get())
+        );
+
+        viewModel.releaseDateTextProperty().set("not-a-date");
+        Assertions.assertFalse(viewModel.saveEnabledProperty().get());
+        viewModel.releaseDateTextProperty().set("2020-03-04");
+        viewModel.save();
+
+        Assertions.assertAll(
+                () -> Assertions.assertEquals(PUBLISHER_ID, publisherUsed.get()),
+                () -> Assertions.assertEquals(Boolean.FALSE,
+                        compilationUsed.get()),
+                () -> Assertions.assertEquals(LocalDate.of(2020, 3, 4),
+                        viewModel.resultProperty().get().getReleaseDate())
+        );
+    }
 }

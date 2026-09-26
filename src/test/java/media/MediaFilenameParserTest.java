@@ -58,6 +58,29 @@ class MediaFilenameParserTest {
     }
 
     @Test
+    @DisplayName("Parses Brazzers series movie scene structure")
+    void parsesBrazzersSeriesMovieSceneStructure() {
+        final ParsedMediaFilename parsed = parser.parse(Path.of(
+                "(15.02.08) Brazzers - BigWetButts - Asspirations 2 - "
+                        + "Abella's Ass Is In Danger - Abella Danger"
+        ));
+
+        Assertions.assertAll(
+                () -> Assertions.assertEquals(LocalDate.of(2015, 2, 8),
+                        parsed.releaseDate()),
+                () -> Assertions.assertEquals(List.of(
+                        "Brazzers", "BigWetButts", "Asspirations 2"
+                ), parsed.contextSegments()),
+                () -> Assertions.assertEquals("Abella's Ass Is In Danger",
+                        parsed.titleCandidate()),
+                () -> Assertions.assertEquals(List.of("Abella Danger"),
+                        parsed.performerCandidates()),
+                () -> Assertions.assertEquals(FilenameParseStatus.VALID,
+                        parsed.status())
+        );
+    }
+
+    @Test
     @DisplayName("Preserves exact separator behavior and title punctuation")
     void preservesSeparatorBehaviorAndTitlePunctuation() {
         final ParsedMediaFilename parsed = parser.parse(Path.of(

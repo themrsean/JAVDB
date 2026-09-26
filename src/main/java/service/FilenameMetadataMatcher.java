@@ -151,10 +151,7 @@ public final class FilenameMetadataMatcher {
                     roleSet("PUBLISHER", "SERIES", "MOVIE"));
         }
 
-        return interpretations.stream()
-                .filter(interpretation -> interpretation.unresolvedSegments()
-                        .isEmpty())
-                .toList();
+        return List.copyOf(interpretations);
     }
 
     private List<String> roleSet(String... roles) {
@@ -174,6 +171,7 @@ public final class FilenameMetadataMatcher {
             EntityMatch movie = absent();
             int score = 0;
             boolean valid = true;
+            boolean exactAnchor = false;
 
             int index = 0;
 
@@ -183,30 +181,34 @@ public final class FilenameMetadataMatcher {
 
                 if ("PUBLISHER".equals(role)) {
                     publisher = exactPublisher(segment);
-                    valid = publisher.id() != null;
+                    exactAnchor = exactAnchor || publisher.id() != null;
                     score = score + score(publisher);
                 } else if ("SERIES".equals(role)) {
-                    series = exactSeries(segment, null);
-                    valid = series.id() != null;
+                    series = exactSeries(segment, publisher.id());
+                    exactAnchor = exactAnchor || series.id() != null;
                     score = score + score(series);
                 } else if ("MOVIE".equals(role)) {
-                    movie = exactMovie(segment, null);
-                    valid = movie.id() != null;
+                    movie = exactMovie(segment, publisher.id());
+                    exactAnchor = exactAnchor || movie.id() != null;
                     score = score + score(movie);
                 }
 
                 index++;
             }
 
+            valid = valid && exactAnchor;
+
             if (valid) {
-                if (publisher.id() == null && series.id() != null
+                if (publisher.source() == MatchSource.ABSENT
+                        && series.id() != null
                         && series.publisherId() != null) {
                     publisher = inferredPublisher(series.publisherId(),
                             MatchSource.INFERRED_FROM_SERIES, publisherNames);
                     score = score - INFERRED_PENALTY;
                 }
 
-                if (publisher.id() == null && movie.id() != null
+                if (publisher.source() == MatchSource.ABSENT
+                        && movie.id() != null
                         && movie.publisherId() != null) {
                     publisher = inferredPublisher(movie.publisherId(),
                             MatchSource.INFERRED_FROM_MOVIE, publisherNames);
@@ -231,12 +233,21 @@ public final class FilenameMetadataMatcher {
             }
 
             if (valid) {
+                final List<String> unresolvedSegments = List.of(
+                                publisher,
+                                series,
+                                movie
+                        ).stream()
+                        .filter(match -> match.source() == MatchSource.UNMATCHED)
+                        .map(EntityMatch::candidateText)
+                        .filter(Objects::nonNull)
+                        .toList();
                 interpretations.add(new FilenameInterpretation(
                         publisher,
                         series,
                         movie,
                         performerMatches,
-                        List.of(),
+                        unresolvedSegments,
                         score
                 ));
             }
@@ -259,7 +270,8 @@ public final class FilenameMetadataMatcher {
     }
 
     private EntityMatch exactPublisher(String candidate) throws SQLException {
-        return exactEntity(candidate, suggestionRepository.suggestPublishers(
+        return exactEntity(candidate, null,
+                suggestionRepository.suggestPublishers(
                 candidate,
                 SuggestionQuery.MAXIMUM_LIMIT
         ));
@@ -268,25 +280,52 @@ public final class FilenameMetadataMatcher {
     private EntityMatch exactSeries(String candidate, UUID publisherId)
             throws SQLException {
 
-        return exactEntity(candidate, suggestionRepository.suggestSeries(
+        EntityMatch match = exactEntity(candidate, publisherId,
+                suggestionRepository.suggestSeries(
                 candidate,
                 publisherId,
                 SuggestionQuery.MAXIMUM_LIMIT
         ));
+        if (publisherId != null && match.id() == null) {
+            final EntityMatch global = exactEntity(candidate, null,
+                    suggestionRepository.suggestSeries(
+                            candidate,
+                            null,
+                            SuggestionQuery.MAXIMUM_LIMIT
+                    ));
+            if (global.id() != null) {
+                match = global;
+            }
+        }
+        return match;
     }
 
     private EntityMatch exactMovie(String candidate, UUID publisherId)
             throws SQLException {
 
-        return exactEntity(candidate, suggestionRepository.suggestMovies(
+        EntityMatch match = exactEntity(candidate, publisherId,
+                suggestionRepository.suggestMovies(
                 candidate,
                 publisherId,
                 SuggestionQuery.MAXIMUM_LIMIT
         ));
+        if (publisherId != null && match.id() == null) {
+            final EntityMatch global = exactEntity(candidate, null,
+                    suggestionRepository.suggestMovies(
+                            candidate,
+                            null,
+                            SuggestionQuery.MAXIMUM_LIMIT
+                    ));
+            if (global.id() != null) {
+                match = global;
+            }
+        }
+        return match;
     }
 
     private EntityMatch exactEntity(
             String candidate,
+            UUID publisherId,
             List<EntitySuggestion> suggestions) {
 
         final List<EntitySuggestion> exactSuggestions =
@@ -301,7 +340,7 @@ public final class FilenameMetadataMatcher {
                     null,
                     candidate,
                     MatchSource.UNMATCHED,
-                    null
+                    publisherId
             );
         }
 
@@ -363,13 +402,34 @@ public final class FilenameMetadataMatcher {
                     ? FilenameMatchStatus.REVIEW_REQUIRED
                     : FilenameMatchStatus.UNRESOLVED;
         } else if (hasCrossEntityAmbiguity(parsed)
-                || interpretations.size() > 1
-                && interpretations.getFirst().score()
-                == interpretations.get(1).score()) {
+                || hasMaterialTopTie(interpretations)) {
             status = FilenameMatchStatus.AMBIGUOUS;
+        } else if (!interpretations.getFirst().unresolvedSegments().isEmpty()) {
+            status = FilenameMatchStatus.UNRESOLVED;
         }
 
         return status;
+    }
+
+    private boolean hasMaterialTopTie(
+            List<FilenameInterpretation> interpretations) {
+
+        return interpretations.size() > 1
+                && interpretations.getFirst().score()
+                == interpretations.get(1).score()
+                && !interpretationKey(interpretations.getFirst()).equals(
+                        interpretationKey(interpretations.get(1))
+                );
+    }
+
+    private String interpretationKey(FilenameInterpretation interpretation) {
+        return matchKey(interpretation.publisher()) + "|"
+                + matchKey(interpretation.series()) + "|"
+                + matchKey(interpretation.movie());
+    }
+
+    private String matchKey(EntityMatch match) {
+        return match.source() + ":" + match.id() + ":" + match.candidateText();
     }
 
     private boolean hasCrossEntityAmbiguity(ParsedMediaFilename parsed) {

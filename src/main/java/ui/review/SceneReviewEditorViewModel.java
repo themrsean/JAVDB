@@ -12,6 +12,8 @@ import model.VerificationStatus;
 import service.CanonicalRenameDisplay;
 import service.EditableSceneReviewDraft;
 import service.FilenameInterpretation;
+import service.FilenameInterpretationConsensus;
+import service.MatchSource;
 import service.SceneReviewDraft;
 import service.SceneReviewRenameChoice;
 import service.SceneReviewSaveRequest;
@@ -23,6 +25,7 @@ import java.io.IOException;
 import java.sql.SQLException;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
+import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.Executor;
@@ -53,6 +56,8 @@ public final class SceneReviewEditorViewModel {
             "Release date must use yyyy-MM-dd.";
     private static final String RENAME_FAILED_TEXT =
             "Saved, but rename failed. Scene needs review.";
+    private static final String APPLY_INTERPRETATION_MESSAGE =
+            "Apply an interpretation before saving as verified.";
 
     private final SceneReviewSaver saver;
     private final SceneReviewDraftLoader draftLoader;
@@ -67,6 +72,8 @@ public final class SceneReviewEditorViewModel {
     private final BooleanProperty dirty = new SimpleBooleanProperty(false);
     private final BooleanProperty saving = new SimpleBooleanProperty(false);
     private final BooleanProperty saveEnabled = new SimpleBooleanProperty(false);
+    private final BooleanProperty verifiedSaveEnabled =
+            new SimpleBooleanProperty(false);
     private final BooleanProperty saveAndRenameEnabled =
             new SimpleBooleanProperty(false);
     private final BooleanProperty previewLoading = new SimpleBooleanProperty(false);
@@ -98,6 +105,11 @@ public final class SceneReviewEditorViewModel {
 
     private EditableSceneReviewDraft editableDraft;
     private boolean loadingDraft;
+    private boolean interpretationSelectionRequired;
+    private boolean publisherResolutionRequired;
+    private boolean seriesResolutionRequired;
+    private boolean movieResolutionRequired;
+    private final AtomicLong draftGeneration = new AtomicLong();
     private final AtomicLong previewGeneration = new AtomicLong();
 
     public SceneReviewEditorViewModel(
@@ -248,10 +260,12 @@ public final class SceneReviewEditorViewModel {
 
         saving.set(true);
         saveMessage.set("");
+        final long generation = draftGeneration.incrementAndGet();
 
         try {
             backgroundExecutor.execute(() -> loadExistingSceneInBackground(
-                    sceneId
+                    sceneId,
+                    generation
             ));
         } catch (RejectedExecutionException exception) {
             saving.set(false);
@@ -264,6 +278,7 @@ public final class SceneReviewEditorViewModel {
     }
 
     public void loadDraft(EditableSceneReviewDraft draft) {
+        draftGeneration.incrementAndGet();
         loadingDraft = true;
         editableDraft = Objects.requireNonNull(
                 draft,
@@ -290,8 +305,62 @@ public final class SceneReviewEditorViewModel {
         saveMessage.set("");
         lastSaveResult.set(null);
         loadingDraft = false;
+        configureInterpretationRequirements(
+                FilenameInterpretationConsensus.initial(
+                        draft.matchStatus(),
+                        draft.alternatives().isEmpty()
+                                ? null : draft.alternatives().getFirst(),
+                        draft.alternatives()
+                ),
+                draft.matchStatus() == service.FilenameMatchStatus.AMBIGUOUS
+        );
         validate();
         schedulePreview();
+    }
+
+    public void clearDraft() {
+        loadingDraft = true;
+        editableDraft = null;
+        draftGeneration.incrementAndGet();
+        previewGeneration.incrementAndGet();
+        saving.set(false);
+        title.set("");
+        releaseDateText.set("");
+        code.set("");
+        season.set("");
+        episode.set("");
+        selectedPublisherId.set(null);
+        selectedSeriesId.set(null);
+        selectedMovieId.set(null);
+        explicitOriginalMovieOverrideId.set(null);
+        selectedPerformers.clear();
+        previewStatus.set("");
+        previewCurrentFilename.set("");
+        previewProposedFilename.set("");
+        previewProposedPath.set("");
+        previewError.set("");
+        previewLoading.set(false);
+        saveAndRenameEnabled.set(false);
+        saveMessage.set("");
+        lastSaveResult.set(null);
+        dirty.set(false);
+        configureInterpretationRequirements(null, false);
+        loadingDraft = false;
+        validate();
+    }
+
+    public void setSelectedPerformerDisplayNames(List<String> displayNames) {
+        final List<UUID> ids = selectedPerformers.stream()
+                .map(SelectedPerformer::id)
+                .toList();
+        selectedPerformers.setAll(java.util.stream.IntStream.range(0, ids.size())
+                .mapToObj(index -> new SelectedPerformer(
+                        ids.get(index),
+                        index < displayNames.size()
+                                ? displayNames.get(index)
+                                : ids.get(index).toString()
+                ))
+                .toList());
     }
 
     public void resetChanges() {
@@ -309,6 +378,8 @@ public final class SceneReviewEditorViewModel {
                             interpretation
                     );
             loadDraft(applied);
+            configureInterpretationRequirements(interpretation, false);
+            validate();
             dirty.set(true);
         }
     }
@@ -437,6 +508,10 @@ public final class SceneReviewEditorViewModel {
         return saveEnabled;
     }
 
+    public BooleanProperty verifiedSaveEnabledProperty() {
+        return verifiedSaveEnabled;
+    }
+
     public BooleanProperty saveAndRenameEnabledProperty() {
         return saveAndRenameEnabled;
     }
@@ -481,7 +556,10 @@ public final class SceneReviewEditorViewModel {
             SceneReviewRenameChoice renameChoice,
             VerificationStatus verificationStatus) {
 
-        if (saveEnabled.get() && !saving.get()) {
+        final boolean enabled = verificationStatus == VerificationStatus.VERIFIED
+                ? verifiedSaveEnabled.get()
+                : saveEnabled.get();
+        if (enabled && !saving.get()) {
             final SceneReviewSaveRequest request = new SceneReviewSaveRequest(
                     draftWithCurrentFields(verificationStatus),
                     renameChoice
@@ -531,18 +609,24 @@ public final class SceneReviewEditorViewModel {
         }
     }
 
-    private void loadExistingSceneInBackground(java.util.UUID sceneId) {
+    private void loadExistingSceneInBackground(
+            java.util.UUID sceneId,
+            long generation) {
         try {
             final EditableSceneReviewDraft draft =
                     draftLoader.fromExistingScene(sceneId);
             uiExecutor.execute(() -> {
-                saving.set(false);
-                loadDraft(draft);
+                if (generation == draftGeneration.get()) {
+                    saving.set(false);
+                    loadDraft(draft);
+                }
             });
         } catch (SQLException | IllegalArgumentException exception) {
             uiExecutor.execute(() -> {
-                saving.set(false);
-                saveMessage.set(exception.getMessage());
+                if (generation == draftGeneration.get()) {
+                    saving.set(false);
+                    saveMessage.set(exception.getMessage());
+                }
             });
         }
     }
@@ -576,6 +660,7 @@ public final class SceneReviewEditorViewModel {
 
     private void updateDirtyAndPreview() {
         updateDirty();
+        validate();
         schedulePreviewIfEditing();
     }
 
@@ -637,7 +722,7 @@ public final class SceneReviewEditorViewModel {
     }
 
     private boolean renameReady(CanonicalRenameDisplay display) {
-        return saveEnabled.get()
+        return verifiedSaveEnabled.get()
                 && !previewLoading.get()
                 && "READY".equals(display.status())
                 && !display.unchanged()
@@ -696,9 +781,56 @@ public final class SceneReviewEditorViewModel {
             saveEnabled.set(!saving.get());
         }
 
-        if (!saveEnabled.get()) {
+        verifiedSaveEnabled.set(saveEnabled.get()
+                && verifiedContextResolved());
+        if (saveEnabled.get() && !verifiedSaveEnabled.get()) {
+            validationMessage.set(verifiedContextMessage());
+        }
+
+        if (!verifiedSaveEnabled.get()) {
             saveAndRenameEnabled.set(false);
         }
+    }
+
+    private void configureInterpretationRequirements(
+            FilenameInterpretation interpretation,
+            boolean selectionRequired) {
+
+        interpretationSelectionRequired = selectionRequired;
+        publisherResolutionRequired = isUnmatched(
+                interpretation == null ? null : interpretation.publisher()
+        );
+        seriesResolutionRequired = isUnmatched(
+                interpretation == null ? null : interpretation.series()
+        );
+        movieResolutionRequired = isUnmatched(
+                interpretation == null ? null : interpretation.movie()
+        );
+    }
+
+    private boolean isUnmatched(service.EntityMatch match) {
+        return match != null && match.source() == MatchSource.UNMATCHED;
+    }
+
+    private boolean verifiedContextResolved() {
+        return !interpretationSelectionRequired
+                && (!publisherResolutionRequired
+                        || selectedPublisherId.get() != null)
+                && (!seriesResolutionRequired || selectedSeriesId.get() != null)
+                && (!movieResolutionRequired || selectedMovieId.get() != null);
+    }
+
+    private String verifiedContextMessage() {
+        if (interpretationSelectionRequired) {
+            return APPLY_INTERPRETATION_MESSAGE;
+        }
+        if (publisherResolutionRequired && selectedPublisherId.get() == null) {
+            return "Select or create the Publisher candidate before saving as verified.";
+        }
+        if (seriesResolutionRequired && selectedSeriesId.get() == null) {
+            return "Select or create the Series candidate before saving as verified.";
+        }
+        return "Select or create the Movie candidate before saving as verified.";
     }
 
     private void updateDirty() {

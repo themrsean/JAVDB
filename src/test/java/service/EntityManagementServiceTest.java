@@ -7,12 +7,14 @@ import model.PerformerCategory;
 import model.Publisher;
 import model.Series;
 import model.Movie;
+import model.MediaFile;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import repository.MediaFileRepository;
+import repository.MediaAssignmentRepository;
 import repository.MovieRepository;
 import repository.PerformerRepository;
 import repository.PublisherRepository;
@@ -21,6 +23,8 @@ import repository.SearchRepository;
 import repository.SeriesRepository;
 
 import java.nio.file.Path;
+import java.nio.file.Files;
+import java.time.Duration;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
@@ -36,6 +40,8 @@ class EntityManagementServiceTest {
     private PerformerRepository performerRepository;
     private SeriesRepository seriesRepository;
     private MovieRepository movieRepository;
+    private MediaFileRepository mediaFileRepository;
+    private MediaAssignmentRepository mediaAssignmentRepository;
     private EntityManagementService service;
 
     @BeforeEach
@@ -49,11 +55,13 @@ class EntityManagementServiceTest {
         performerRepository = new PerformerRepository(databaseManager);
         seriesRepository = new SeriesRepository(databaseManager);
         movieRepository = new MovieRepository(databaseManager);
+        mediaFileRepository = new MediaFileRepository(databaseManager);
+        mediaAssignmentRepository = new MediaAssignmentRepository(databaseManager);
         final CatalogService catalogService = new CatalogService(
                 publisherRepository,
                 performerRepository,
                 seriesRepository,
-                new MediaFileRepository(databaseManager),
+                mediaFileRepository,
                 new SceneRepository(databaseManager),
                 new SearchRepository(databaseManager),
                 movieRepository
@@ -108,6 +116,44 @@ class EntityManagementServiceTest {
                                 .getReleaseDate()
                 ),
                 () -> Assertions.assertTrue(movie.isCompilation())
+        );
+    }
+
+    @Test
+    @DisplayName("Creating movie persists only catalog data and never changes media")
+    void creatingMovieDoesNotAssociateOrRenameMedia() throws Exception {
+        final Publisher publisher =
+                service.createPublisher("Brazzers", List.of());
+        final UUID mediaId = UUID.randomUUID();
+        final Path mediaPath = temporaryDirectory.resolve("original-name.mp4");
+        Files.writeString(mediaPath, "media");
+        mediaFileRepository.insert(new MediaFile(
+                mediaId, mediaPath, Files.size(mediaPath), null,
+                Duration.ofSeconds(1), 1280, 720,
+                Files.getLastModifiedTime(mediaPath).toMillis()
+        ));
+
+        final Movie created = service.createMovie(
+                "Asspirations 2", null, publisher.getId(), false
+        );
+        final Movie persisted = movieRepository.findById(created.getId())
+                .orElseThrow();
+
+        Assertions.assertAll(
+                () -> Assertions.assertEquals(publisher.getId(),
+                        persisted.getPublisher().getId()),
+                () -> Assertions.assertNull(persisted.getReleaseDate()),
+                () -> Assertions.assertFalse(persisted.isCompilation()),
+                () -> Assertions.assertTrue(persisted.getScenes().isEmpty()),
+                () -> Assertions.assertTrue(persisted.getFiles().isEmpty()),
+                () -> Assertions.assertTrue(mediaAssignmentRepository
+                        .findAssignment(mediaId).scenes().isEmpty()),
+                () -> Assertions.assertTrue(mediaAssignmentRepository
+                        .findAssignment(mediaId).movies().isEmpty()),
+                () -> Assertions.assertEquals(mediaPath,
+                        mediaFileRepository.findById(mediaId).orElseThrow()
+                                .getPath()),
+                () -> Assertions.assertTrue(Files.exists(mediaPath))
         );
     }
 

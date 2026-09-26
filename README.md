@@ -257,14 +257,20 @@ latest preview is current and safe to apply. It uses the same safe rename
 service as the CLI, never overwrites destination files, and keeps the file in
 the same directory. If metadata is saved but a requested rename fails, JAVDB
 preserves the scene and forces `NEEDS_REVIEW`.
+Catalog creation and the two no-rename save actions never change physical media;
+`Save and Rename` is the only normal reviewed-save action that can move it.
 
 Unknown entities and aliases are never created silently. Publisher, performer,
 series, and movie creation are explicit review actions. Series and movie dialogs
-use bounded publisher autocomplete; publisher UUIDs are not entered manually in
-the GUI. Mapping a filename candidate to an existing publisher or performer does
-not create an alias by itself. Alias creation requires a second explicit
-confirmation, defaults to No, and duplicate aliases differing only by case are
-rejected.
+in Context Candidate Review use bounded publisher autocomplete. In the main
+Scene review editor, Create Movie instead uses the already-resolved Publisher,
+shows its name read-only, prefills the candidate title, and accepts an optional
+Movie release date. The created Movie is non-compilation catalog data and is
+selected in the draft, but creating it never attaches a Scene or media file and
+never renames media. Mapping a filename candidate to an existing publisher or
+performer does not create an alias by itself. Alias creation requires a second
+explicit confirmation, defaults to No, and duplicate aliases differing only by
+case are rejected.
 
 Original movie selection follows the CLI rename rules: no movie is omitted, one
 movie is used, the unique earliest dated movie is selected from multiple movies,
@@ -696,7 +702,19 @@ Database matching uses exact case-insensitive primary-name/title and alias
 matches for automatic indexing. Prefix and substring matches are suggestions
 that require review. Known publisher-series and publisher-movie relationships
 rank otherwise plausible interpretations, and a unique exact series or movie
-can infer its publisher. Explicit relationship conflicts prevent READY status.
+can infer its publisher when the filename has no explicit Publisher slot.
+Explicit relationship conflicts prevent READY status.
+
+Strong partial interpretations are retained when exact catalog evidence anchors
+them. For example, an exact Publisher and Series followed by an unknown segment
+keeps that segment as a typed unresolved Movie candidate instead of discarding
+the interpretation. An exact Series followed by an unknown segment similarly
+infers the Series Publisher and keeps the remaining segment as a Movie
+candidate. By contrast, Publisher plus one unknown segment remains explicitly
+ambiguous between Series and Movie until the user applies an alternative.
+Unresolved typed text is reported in `unresolved_segments` and contributes no
+exact-match score; fully unknown context does not produce speculative role
+assignments.
 
 Match statuses:
 

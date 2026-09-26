@@ -84,10 +84,13 @@ public final class EntityAutocompleteViewModel {
     }
 
     public void clear() {
+        generation.incrementAndGet();
         searchText.set("");
         suggestions.clear();
         selectedSuggestion.set(null);
         errorMessage.set("");
+        loading.set(false);
+        generation.incrementAndGet();
     }
 
     public void dispose() {

@@ -7,6 +7,7 @@ import model.Publisher;
 import model.Series;
 
 import java.util.Optional;
+import java.util.UUID;
 
 public interface EntityDialogLauncher {
     Optional<Publisher> createPublisher(Window owner);
@@ -35,6 +36,14 @@ public interface EntityDialogLauncher {
             Window owner,
             String initialTitle,
             MovieEditorDialogViewModel.Creator creator) {
+        return createMovie(owner);
+    }
+
+    default Optional<Movie> createMovieForPublisher(
+            Window owner,
+            String initialTitle,
+            UUID publisherId,
+            String publisherName) {
         return createMovie(owner);
     }
 }

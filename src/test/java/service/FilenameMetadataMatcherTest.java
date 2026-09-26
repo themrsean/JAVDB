@@ -42,6 +42,14 @@ class FilenameMetadataMatcherTest {
             UUID.fromString("55555555-face-5555-face-555555555555");
     private static final UUID OTHER_PERFORMER_ID =
             UUID.fromString("66666666-face-6666-face-666666666666");
+    private static final UUID BRAZZERS_ID =
+            UUID.fromString("77777777-face-7777-face-777777777777");
+    private static final UUID BIG_WET_BUTTS_ID =
+            UUID.fromString("88888888-face-8888-face-888888888888");
+    private static final UUID ABELLA_DANGER_ID =
+            UUID.fromString("99999999-face-9999-face-999999999999");
+    private static final UUID ASSPIRATIONS_ID =
+            UUID.fromString("aaaaaaaa-face-aaaa-face-aaaaaaaaaaaa");
 
     private FilenameMetadataMatcher matcher;
     private MediaFilenameParser parser;
@@ -108,6 +116,177 @@ class FilenameMetadataMatcherTest {
         movieRepository.insert(movie);
         new PerformerRepository(databaseManager).insert(performer);
         new PerformerRepository(databaseManager).insert(otherPerformer);
+        final Publisher brazzers = new Publisher(
+                BRAZZERS_ID, "Brazzers", List.of()
+        );
+        new PublisherRepository(databaseManager).insert(brazzers);
+        new SeriesRepository(databaseManager).insert(new Series(
+                BIG_WET_BUTTS_ID, "BigWetButts", brazzers
+        ));
+        new PerformerRepository(databaseManager).insert(new Performer(
+                ABELLA_DANGER_ID,
+                "Abella Danger",
+                List.of(),
+                PerformerCategory.ACTRESS
+        ));
+    }
+
+    @Test
+    @DisplayName("Strong partial retains unresolved movie and resolves after creation")
+    void strongPartialRetainsUnresolvedMovieAndResolvesAfterCreation()
+            throws Exception {
+
+        final Path path = Path.of(
+                "(15.02.08) Brazzers - BigWetButts - Asspirations 2 - "
+                        + "Abella's Ass Is In Danger - Abella Danger"
+        );
+        final FilenameMatchResult partial = matcher.match(parser.parse(path));
+        final FilenameInterpretation interpretation =
+                partial.bestInterpretation();
+
+        Assertions.assertAll(
+                () -> Assertions.assertEquals(FilenameMatchStatus.UNRESOLVED,
+                        partial.status()),
+                () -> Assertions.assertNotNull(interpretation),
+                () -> Assertions.assertEquals(BRAZZERS_ID,
+                        interpretation.publisher().id()),
+                () -> Assertions.assertEquals("Brazzers",
+                        interpretation.publisher().name()),
+                () -> Assertions.assertEquals(BIG_WET_BUTTS_ID,
+                        interpretation.series().id()),
+                () -> Assertions.assertEquals("BigWetButts",
+                        interpretation.series().name()),
+                () -> Assertions.assertNull(interpretation.movie().id()),
+                () -> Assertions.assertEquals("Asspirations 2",
+                        interpretation.movie().candidateText()),
+                () -> Assertions.assertEquals(MatchSource.UNMATCHED,
+                        interpretation.movie().source()),
+                () -> Assertions.assertEquals(List.of("Asspirations 2"),
+                        interpretation.unresolvedSegments())
+        );
+
+        movieRepository.insert(new Movie(
+                ASSPIRATIONS_ID,
+                "Asspirations 2",
+                null,
+                new Publisher(BRAZZERS_ID, "Brazzers", List.of()),
+                List.of(),
+                false,
+                List.of()
+        ));
+        final FilenameMatchResult resolved = matcher.match(parser.parse(path));
+
+        Assertions.assertAll(
+                () -> Assertions.assertEquals(FilenameMatchStatus.READY,
+                        resolved.status()),
+                () -> Assertions.assertEquals(ASSPIRATIONS_ID,
+                        resolved.bestInterpretation().movie().id())
+        );
+    }
+
+    @Test
+    @DisplayName("Publisher plus unknown context retains tied series and movie candidates")
+    void publisherPlusUnknownContextRetainsRoleAmbiguity() throws Exception {
+        final FilenameMatchResult result = matcher.match(parser.parse(Path.of(
+                "(15.02.08) Brazzers - Unknown Name - Scene Title - Abella Danger"
+        )));
+        final List<FilenameInterpretation> top = result.interpretations().stream()
+                .filter(value -> value.score()
+                        == result.bestInterpretation().score())
+                .toList();
+
+        Assertions.assertAll(
+                () -> Assertions.assertEquals(FilenameMatchStatus.AMBIGUOUS,
+                        result.status()),
+                () -> Assertions.assertEquals(2, top.size()),
+                () -> Assertions.assertTrue(top.stream().anyMatch(value ->
+                        "Unknown Name".equals(value.series().candidateText())
+                                && value.series().source()
+                                == MatchSource.UNMATCHED
+                                && value.movie().source() == MatchSource.ABSENT)),
+                () -> Assertions.assertTrue(top.stream().anyMatch(value ->
+                        "Unknown Name".equals(value.movie().candidateText())
+                                && value.movie().source()
+                                == MatchSource.UNMATCHED
+                                && value.series().source() == MatchSource.ABSENT))
+        );
+    }
+
+    @Test
+    @DisplayName("Publisher plus exact series prefers complete series interpretation")
+    void publisherPlusExactSeriesIsReady() throws Exception {
+        final FilenameMatchResult result = matcher.match(parser.parse(Path.of(
+                "(15.02.08) Brazzers - BigWetButts - Scene Title - Abella Danger"
+        )));
+
+        Assertions.assertAll(
+                () -> Assertions.assertEquals(FilenameMatchStatus.READY,
+                        result.status()),
+                () -> Assertions.assertEquals(BIG_WET_BUTTS_ID,
+                        result.bestInterpretation().series().id()),
+                () -> Assertions.assertEquals(MatchSource.ABSENT,
+                        result.bestInterpretation().movie().source())
+        );
+    }
+
+    @Test
+    @DisplayName("Publisher plus exact movie prefers complete movie interpretation")
+    void publisherPlusExactMovieIsReady() throws Exception {
+        movieRepository.insert(new Movie(ASSPIRATIONS_ID, "Asspirations 2", null,
+                new Publisher(BRAZZERS_ID, "Brazzers", List.of()), List.of(),
+                false, List.of()));
+
+        final FilenameMatchResult result = matcher.match(parser.parse(Path.of(
+                "(15.02.08) Brazzers - Asspirations 2 - Scene Title - Abella Danger"
+        )));
+
+        Assertions.assertAll(
+                () -> Assertions.assertEquals(FilenameMatchStatus.READY,
+                        result.status()),
+                () -> Assertions.assertEquals(ASSPIRATIONS_ID,
+                        result.bestInterpretation().movie().id()),
+                () -> Assertions.assertEquals(MatchSource.ABSENT,
+                        result.bestInterpretation().series().source())
+        );
+    }
+
+    @Test
+    @DisplayName("Series plus unknown context infers publisher and types movie candidate")
+    void seriesPlusUnknownContextInfersPublisherAndTypesMovie() throws Exception {
+        final FilenameMatchResult result = matcher.match(parser.parse(Path.of(
+                "(15.02.08) BigWetButts - Asspirations 2 - Scene Title - Abella Danger"
+        )));
+
+        Assertions.assertAll(
+                () -> Assertions.assertEquals(FilenameMatchStatus.UNRESOLVED,
+                        result.status()),
+                () -> Assertions.assertEquals(BRAZZERS_ID,
+                        result.bestInterpretation().publisher().id()),
+                () -> Assertions.assertEquals(MatchSource.INFERRED_FROM_SERIES,
+                        result.bestInterpretation().publisher().source()),
+                () -> Assertions.assertEquals(BIG_WET_BUTTS_ID,
+                        result.bestInterpretation().series().id()),
+                () -> Assertions.assertEquals("Asspirations 2",
+                        result.bestInterpretation().movie().candidateText()),
+                () -> Assertions.assertEquals(List.of("Asspirations 2"),
+                        result.bestInterpretation().unresolvedSegments())
+        );
+    }
+
+    @Test
+    @DisplayName("Fully unknown context does not create speculative interpretations")
+    void fullyUnknownContextDoesNotCreateSpeculativeInterpretations()
+            throws Exception {
+        final FilenameMatchResult result = matcher.match(parser.parse(Path.of(
+                "(15.02.08) Unknown One - Unknown Two - Scene Title - Abella Danger"
+        )));
+
+        Assertions.assertAll(
+                () -> Assertions.assertEquals(FilenameMatchStatus.UNRESOLVED,
+                        result.status()),
+                () -> Assertions.assertNull(result.bestInterpretation()),
+                () -> Assertions.assertTrue(result.interpretations().isEmpty())
+        );
     }
 
     @Test
@@ -209,6 +388,33 @@ class FilenameMetadataMatcherTest {
         )));
 
         Assertions.assertEquals(FilenameMatchStatus.UNRESOLVED, result.status());
+    }
+
+    @Test
+    @DisplayName("Explicit publisher conflict cannot resolve known foreign series")
+    void explicitPublisherConflictRejectsForeignSeries() throws Exception {
+        final UUID foreignSeriesId = UUID.fromString(
+                "abababab-face-abab-face-abababababab"
+        );
+        new SeriesRepository(new DatabaseManager(
+                temporaryDirectory.resolve(DATABASE_FILE_NAME)
+        )).insert(new Series(
+                foreignSeriesId,
+                "Foreign Series",
+                new Publisher(OTHER_PUBLISHER_ID, "Series", List.of())
+        ));
+
+        final FilenameMatchResult result = matcher.match(parser.parse(Path.of(
+                "(25.01.02) Studio - Foreign Series - Scene Title - Performer One.mp4"
+        )));
+
+        Assertions.assertAll(
+                () -> Assertions.assertEquals(FilenameMatchStatus.UNRESOLVED,
+                        result.status()),
+                () -> Assertions.assertTrue(result.interpretations().stream()
+                        .noneMatch(value -> foreignSeriesId.equals(
+                                value.series().id())))
+        );
     }
 
     @Test

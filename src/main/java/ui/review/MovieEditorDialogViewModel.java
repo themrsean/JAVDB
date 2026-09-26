@@ -51,6 +51,16 @@ public final class MovieEditorDialogViewModel {
             Executor uiExecutor,
             String initialTitle) {
 
+        this(creator, backgroundExecutor, uiExecutor, initialTitle, null);
+    }
+
+    public MovieEditorDialogViewModel(
+            Creator creator,
+            Executor backgroundExecutor,
+            Executor uiExecutor,
+            String initialTitle,
+            UUID initialPublisherId) {
+
         this.creator = Objects.requireNonNull(
                 creator,
                 "Movie creator must not be null"
@@ -64,6 +74,7 @@ public final class MovieEditorDialogViewModel {
                 "UI executor must not be null"
         );
         title.set(initialTitle == null ? "" : initialTitle);
+        publisherId.set(initialPublisherId);
         title.addListener((observable, oldValue, newValue) -> validate());
         releaseDateText.addListener((observable, oldValue, newValue) ->
                 validate());

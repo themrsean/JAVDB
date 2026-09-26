@@ -69,6 +69,43 @@ class SceneReviewEditorViewModelTest {
     }
 
     @Test
+    @DisplayName("Typed unresolved movie blocks verified save until real movie selected")
+    void typedUnresolvedMovieRequiresCatalogSelectionForVerifiedSave() {
+        final SceneReviewEditorViewModel viewModel =
+                viewModel(new CapturingWorkflow());
+        final FilenameInterpretation partial = new FilenameInterpretation(
+                new EntityMatch(PUBLISHER_ID, "Brazzers", "Brazzers",
+                        MatchSource.EXPLICIT_PRIMARY_NAME, null),
+                new EntityMatch(SERIES_ID, "BigWetButts", "BigWetButts",
+                        MatchSource.EXPLICIT_PRIMARY_NAME, PUBLISHER_ID),
+                new EntityMatch(null, null, "Asspirations 2",
+                        MatchSource.UNMATCHED, PUBLISHER_ID),
+                List.of(), List.of("Asspirations 2"), 250
+        );
+        final EditableSceneReviewDraft base = editableDraft("Title");
+        final EditableSceneReviewDraft editable = new EditableSceneReviewDraft(
+                base.draft(), base.mediaPath(), base.parsedFilename(),
+                FilenameMatchStatus.UNRESOLVED, List.of(partial), List.of(),
+                List.of(), null, List.of()
+        );
+
+        viewModel.loadDraft(editable);
+
+        Assertions.assertAll(
+                () -> Assertions.assertTrue(viewModel.saveEnabledProperty().get()),
+                () -> Assertions.assertFalse(
+                        viewModel.verifiedSaveEnabledProperty().get()),
+                () -> Assertions.assertTrue(
+                        viewModel.validationMessageProperty().get()
+                                .contains("Movie"))
+        );
+
+        viewModel.selectedMovieIdProperty().set(MOVIE_ID);
+
+        Assertions.assertTrue(viewModel.verifiedSaveEnabledProperty().get());
+    }
+
+    @Test
     @DisplayName("Existing scene draft loads through draft loader")
     void existingSceneDraftLoadsThroughDraftLoader() {
         final SceneReviewEditorViewModel viewModel =

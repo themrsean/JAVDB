@@ -246,6 +246,51 @@ public final class JavaFxEntityDialogLauncher implements EntityDialogLauncher {
         return dialog.showAndWait();
     }
 
+    @Override
+    public Optional<Movie> createMovieForPublisher(
+            Window owner,
+            String initialTitle,
+            UUID publisherId,
+            String publisherName) {
+
+        final MovieEditorDialogViewModel viewModel =
+                new MovieEditorDialogViewModel(
+                        entityManagementService::createMovie,
+                        backgroundExecutor,
+                        Platform::runLater,
+                        initialTitle,
+                        publisherId
+                );
+        final TextField titleField = new TextField();
+        final Label publisherLabel = new Label(
+                publisherName == null ? "" : publisherName
+        );
+        final TextField releaseDateField = new TextField();
+        final Dialog<Movie> dialog = new Dialog<>();
+        dialog.setTitle("Create Movie");
+        dialog.initOwner(owner);
+        dialog.initModality(Modality.WINDOW_MODAL);
+        dialog.getDialogPane().setContent(grid(
+                "Title", titleField,
+                "Publisher", publisherLabel,
+                "Release date", releaseDateField
+        ));
+        dialog.getDialogPane().getButtonTypes().setAll(
+                new ButtonType("Create", ButtonBar.ButtonData.OK_DONE),
+                ButtonType.CANCEL
+        );
+        titleField.textProperty().bindBidirectional(viewModel.titleProperty());
+        releaseDateField.textProperty()
+                .bindBidirectional(viewModel.releaseDateTextProperty());
+        wireDialogSave(dialog, viewModel::save,
+                viewModel.saveEnabledProperty(),
+                viewModel.savingProperty(),
+                viewModel.errorMessageProperty(),
+                viewModel.resultProperty());
+
+        return dialog.showAndWait();
+    }
+
     private <T> Dialog<T> dialog(Window owner, String title, GridPane content) {
         final Dialog<T> dialog = new Dialog<>();
         dialog.setTitle(title);

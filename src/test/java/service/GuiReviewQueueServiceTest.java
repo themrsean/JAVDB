@@ -56,6 +56,8 @@ class GuiReviewQueueServiceTest {
             UUID.fromString("aaaaaaaa-fafa-aaaa-fafa-aaaaaaaaaaaa");
     private static final UUID MOVIE_MEDIA_ID =
             UUID.fromString("bbbbbbbb-fafa-bbbb-fafa-bbbbbbbbbbbb");
+    private static final UUID PARTIAL_MOVIE_MEDIA_ID =
+            UUID.fromString("eeeeeeee-fafa-eeee-fafa-eeeeeeeeeeee");
     private static final UUID SCENE_ID =
             UUID.fromString("77777777-fafa-7777-fafa-777777777777");
     private static final long FILE_SIZE = 1_234L;
@@ -72,6 +74,8 @@ class GuiReviewQueueServiceTest {
     private Publisher publisher;
     private SeriesRepository seriesRepository;
     private MovieRepository movieRepository;
+    private PublisherRepository publisherRepository;
+    private PerformerRepository performerRepository;
 
     @BeforeEach
     void initializeDatabase() throws Exception {
@@ -89,6 +93,8 @@ class GuiReviewQueueServiceTest {
                 new SceneRepository(databaseManager);
         seriesRepository = new SeriesRepository(databaseManager);
         movieRepository = new MovieRepository(databaseManager);
+        publisherRepository = new PublisherRepository(databaseManager);
+        performerRepository = new PerformerRepository(databaseManager);
         service = new GuiReviewQueueService(
                 new MediaFilenameIndexingService(
                         mediaFileRepository,
@@ -96,7 +102,7 @@ class GuiReviewQueueServiceTest {
                         new MediaFilenameParser(),
                         new FilenameMetadataMatcher(
                                 new EntitySuggestionRepository(databaseManager),
-                                new PublisherRepository(databaseManager)
+                                publisherRepository
                         )
                 ),
                 mediaFileRepository
@@ -109,8 +115,8 @@ class GuiReviewQueueServiceTest {
                 List.of("P Alias"),
                 PerformerCategory.ACTOR
         );
-        new PublisherRepository(databaseManager).insert(publisher);
-        new PerformerRepository(databaseManager).insert(performer);
+        publisherRepository.insert(publisher);
+        performerRepository.insert(performer);
 
         final MediaFile ready = mediaFile(
                 READY_MEDIA_ID,
@@ -314,6 +320,62 @@ class GuiReviewQueueServiceTest {
                         details.canonicalRename().proposedFilename().isBlank()),
                 () -> Assertions.assertTrue(details.canonicalRename()
                         .proposedFilename().contains("Studio"))
+        );
+    }
+
+    @Test
+    @DisplayName("Strong partial movie reaches review queue without canonical rename")
+    void strongPartialMovieReachesReviewQueue() throws Exception {
+        final UUID brazzersId = UUID.fromString(
+                "10101010-fafa-1010-fafa-101010101010"
+        );
+        final UUID seriesId = UUID.fromString(
+                "12121212-fafa-1212-fafa-121212121212"
+        );
+        final UUID performerId = UUID.fromString(
+                "34343434-fafa-3434-fafa-343434343434"
+        );
+        final Publisher brazzers = new Publisher(
+                brazzersId, "Brazzers", List.of()
+        );
+        publisherRepository.insert(brazzers);
+        seriesRepository.insert(new Series(
+                seriesId, "BigWetButts", brazzers
+        ));
+        performerRepository.insert(new Performer(
+                performerId, "Abella Danger", List.of(),
+                PerformerCategory.ACTRESS
+        ));
+        mediaFileRepository.insert(mediaFile(
+                PARTIAL_MOVIE_MEDIA_ID,
+                mediaDirectory.resolve(
+                        "(15.02.08) Brazzers - BigWetButts - Asspirations 2 - "
+                                + "Abella's Ass Is In Danger - Abella Danger.mp4"
+                ),
+                WIDTH,
+                HEIGHT
+        ));
+
+        final ReviewDetails details = details(
+                service.loadPage(ReviewQueueFilter.firstPage()),
+                PARTIAL_MOVIE_MEDIA_ID
+        );
+
+        Assertions.assertAll(
+                () -> Assertions.assertEquals(FilenameMatchStatus.UNRESOLVED,
+                        details.matchStatus()),
+                () -> Assertions.assertEquals("Brazzers",
+                        details.publisherResolution()),
+                () -> Assertions.assertEquals("BigWetButts",
+                        details.seriesResolution()),
+                () -> Assertions.assertEquals("Asspirations 2",
+                        details.movieCandidate()),
+                () -> Assertions.assertTrue(details.movieResolution().isBlank()),
+                () -> Assertions.assertEquals(List.of("Asspirations 2"),
+                        details.unresolvedSegments()),
+                () -> Assertions.assertEquals(
+                        FilenameGenerationStatus.REVIEW_REQUIRED.name(),
+                        details.canonicalRename().status())
         );
     }
 

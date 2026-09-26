@@ -92,6 +92,37 @@ class EntityAutocompleteViewModelTest {
     }
 
     @Test
+    @DisplayName("Clear invalidates delayed results and resets all transient state")
+    void clearInvalidatesDelayedResultsAndResetsState() {
+        final QueuedExecutor background = new QueuedExecutor();
+        final QueuedExecutor ui = new QueuedExecutor();
+        final EntityAutocompleteViewModel viewModel = viewModel(
+                new FakeProvider(List.of(suggestion(FIRST_ID))),
+                background,
+                ui
+        );
+        viewModel.searchTextProperty().set("old row");
+        viewModel.select(suggestion(SECOND_ID));
+        viewModel.suggestions().add(suggestion(SECOND_ID));
+        viewModel.search();
+
+        viewModel.clear();
+        background.runNext();
+        ui.runNext();
+
+        Assertions.assertAll(
+                () -> Assertions.assertTrue(
+                        viewModel.searchTextProperty().get().isBlank()),
+                () -> Assertions.assertTrue(viewModel.suggestions().isEmpty()),
+                () -> Assertions.assertNull(
+                        viewModel.selectedSuggestionProperty().get()),
+                () -> Assertions.assertTrue(
+                        viewModel.errorMessageProperty().get().isBlank()),
+                () -> Assertions.assertFalse(viewModel.loadingProperty().get())
+        );
+    }
+
+    @Test
     @DisplayName("Errors clear after successful search")
     void errorsClearAfterSuccessfulSearch() {
         final SequencedProvider provider = new SequencedProvider(

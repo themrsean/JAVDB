@@ -41,6 +41,8 @@ class SceneReviewDraftFactoryTest {
             UUID.fromString("33333333-bbbb-3333-bbbb-333333333333");
     private static final UUID MOVIE_ID =
             UUID.fromString("44444444-aaaa-4444-aaaa-444444444444");
+    private static final UUID SERIES_ID =
+            UUID.fromString("44444444-bbbb-4444-bbbb-444444444444");
     private static final UUID SCENE_ID =
             UUID.fromString("55555555-aaaa-5555-aaaa-555555555555");
     private static final long FILE_SIZE = 10L;
@@ -303,6 +305,94 @@ class SceneReviewDraftFactoryTest {
                         FilenameMatchStatus.AMBIGUOUS,
                         editable.matchStatus()
                 )
+        );
+    }
+
+    @Test
+    @DisplayName("Strong partial draft keeps resolved IDs and typed movie evidence")
+    void strongPartialDraftKeepsResolvedIdsAndMovieCandidate() {
+        final FilenameInterpretation interpretation =
+                new FilenameInterpretation(
+                        publisherMatch(),
+                        new EntityMatch(SERIES_ID, "BigWetButts",
+                                "BigWetButts",
+                                MatchSource.EXPLICIT_PRIMARY_NAME,
+                                PUBLISHER_ID),
+                        new EntityMatch(null, null, "Asspirations 2",
+                                MatchSource.UNMATCHED, PUBLISHER_ID),
+                        List.of(resolvedPerformer(PERFORMER_ID, "Alice")),
+                        List.of("Asspirations 2"),
+                        250
+                );
+
+        final EditableSceneReviewDraft editable = factory.fromReviewDetails(
+                reviewDetails(interpretation, List.of())
+        );
+
+        Assertions.assertAll(
+                () -> Assertions.assertEquals(PUBLISHER_ID,
+                        editable.draft().publisherId()),
+                () -> Assertions.assertEquals(SERIES_ID,
+                        editable.draft().seriesId()),
+                () -> Assertions.assertNull(editable.draft().selectedMovieId()),
+                () -> Assertions.assertEquals(List.of(PERFORMER_ID),
+                        editable.draft().performerIds()),
+                () -> Assertions.assertEquals("Asspirations 2",
+                        editable.alternatives().getFirst().movie()
+                                .candidateText())
+        );
+    }
+
+    @Test
+    @DisplayName("Ambiguous series versus movie draft retains common publisher only")
+    void ambiguousRoleDraftRetainsCommonPublisherOnly() {
+        final EntityMatch publisherMatch = publisherMatch();
+        final FilenameInterpretation seriesAlternative =
+                new FilenameInterpretation(
+                        publisherMatch,
+                        new EntityMatch(null, null, "Unknown Name",
+                                MatchSource.UNMATCHED, PUBLISHER_ID),
+                        new EntityMatch(null, null, null,
+                                MatchSource.ABSENT, null),
+                        List.of(), List.of("Unknown Name"), 100
+                );
+        final FilenameInterpretation movieAlternative =
+                new FilenameInterpretation(
+                        publisherMatch,
+                        new EntityMatch(null, null, null,
+                                MatchSource.ABSENT, null),
+                        new EntityMatch(null, null, "Unknown Name",
+                                MatchSource.UNMATCHED, PUBLISHER_ID),
+                        List.of(), List.of("Unknown Name"), 100
+                );
+        final ReviewDetails base = reviewDetails(
+                seriesAlternative, List.of()
+        );
+        final ReviewDetails details = new ReviewDetails(
+                base.mediaId(), base.path(), base.filename(), base.directory(),
+                base.fileSize(), base.lastModifiedMillis(), base.width(),
+                base.height(), base.duration(), base.contentHash(),
+                base.parseStatus(), base.releaseDate(), base.contextSegments(),
+                base.proposedTitle(), base.code(), base.season(), base.episode(),
+                base.performerCandidates(), base.resolvedPerformerNames(),
+                base.unmatchedPerformers(), base.publisherCandidate(),
+                base.publisherResolution(), base.seriesCandidate(),
+                base.seriesResolution(), base.movieCandidate(),
+                base.movieResolution(), seriesAlternative,
+                List.of(seriesAlternative, movieAlternative),
+                base.unresolvedSegments(), base.parserIssues(),
+                base.parserWarnings(), base.matcherWarnings(),
+                FilenameMatchStatus.AMBIGUOUS, base.canonicalRename()
+        );
+
+        final EditableSceneReviewDraft editable =
+                factory.fromReviewDetails(details);
+
+        Assertions.assertAll(
+                () -> Assertions.assertEquals(PUBLISHER_ID,
+                        editable.draft().publisherId()),
+                () -> Assertions.assertNull(editable.draft().seriesId()),
+                () -> Assertions.assertNull(editable.draft().selectedMovieId())
         );
     }
 

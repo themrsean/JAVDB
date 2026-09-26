@@ -45,9 +45,10 @@ public final class SceneReviewDraftFactory {
         final ParsedMediaFilename parsed = preview.parsedFilename();
         final FilenameMatchResult matchResult = preview.matchResult();
         final FilenameInterpretation best = matchResult.bestInterpretation();
-        final boolean ready = matchResult.status() == FilenameMatchStatus.READY
-                && best != null;
-        final SceneReviewDraft draft = draftFromPreview(preview, ready, best);
+        final FilenameInterpretation initial = FilenameInterpretationConsensus
+                .initial(matchResult.status(), best,
+                        matchResult.interpretations());
+        final SceneReviewDraft draft = draftFromPreview(preview, initial);
 
         return new EditableSceneReviewDraft(
                 draft,
@@ -56,7 +57,7 @@ public final class SceneReviewDraftFactory {
                 matchResult.status(),
                 matchResult.interpretations(),
                 parsed.performerCandidates(),
-                unmatchedPerformers(parsed, ready ? best : null),
+                unmatchedPerformers(parsed, initial),
                 null,
                 combinedWarnings(parsed.warnings(), matchResult.warnings())
         );
@@ -65,7 +66,9 @@ public final class SceneReviewDraftFactory {
     public EditableSceneReviewDraft fromReviewDetails(ReviewDetails details) {
         Objects.requireNonNull(details, "Review details must not be null");
 
-        final FilenameInterpretation best = details.bestInterpretation();
+        final FilenameInterpretation best = FilenameInterpretationConsensus
+                .initial(details.matchStatus(), details.bestInterpretation(),
+                        details.alternativeInterpretations());
         final SceneReviewDraft draft = new SceneReviewDraft(
                 SceneReviewMode.CREATE_FROM_MEDIA,
                 null,
@@ -177,13 +180,10 @@ public final class SceneReviewDraftFactory {
                 current.code(),
                 current.season(),
                 current.episode(),
-                idOrCurrent(interpretation.publisher(), current.publisherId()),
-                idOrCurrent(interpretation.series(), current.seriesId()),
-                idOrCurrent(interpretation.movie(), current.selectedMovieId()),
-                idOrCurrent(
-                        interpretation.movie(),
-                        current.explicitOriginalMovieOverrideId()
-                ),
+                id(interpretation.publisher()),
+                id(interpretation.series()),
+                id(interpretation.movie()),
+                id(interpretation.movie()),
                 performerIdsOrCurrent(
                         interpretation.performers(),
                         current.performerIds()
@@ -207,7 +207,6 @@ public final class SceneReviewDraftFactory {
 
     private SceneReviewDraft draftFromPreview(
             FilenamePreview preview,
-            boolean ready,
             FilenameInterpretation best) {
 
         final ParsedMediaFilename parsed = preview.parsedFilename();
@@ -221,11 +220,11 @@ public final class SceneReviewDraftFactory {
                 parsed.codeCandidate(),
                 parsed.season(),
                 parsed.episode(),
-                ready ? id(best.publisher()) : null,
-                ready ? id(best.series()) : null,
-                ready ? id(best.movie()) : null,
-                ready ? id(best.movie()) : null,
-                ready ? performerIds(best.performers()) : List.of(),
+                best == null ? null : id(best.publisher()),
+                best == null ? null : id(best.series()),
+                best == null ? null : id(best.movie()),
+                best == null ? null : id(best.movie()),
+                best == null ? List.of() : performerIds(best.performers()),
                 model.VerificationStatus.VERIFIED,
                 combinedWarnings(
                         parsed.warnings(),
@@ -236,10 +235,6 @@ public final class SceneReviewDraftFactory {
 
     private UUID id(EntityMatch match) {
         return match == null ? null : match.id();
-    }
-
-    private UUID idOrCurrent(EntityMatch match, UUID currentId) {
-        return match == null || match.id() == null ? currentId : match.id();
     }
 
     private List<UUID> performerIds(List<EntityMatch> performers) {
