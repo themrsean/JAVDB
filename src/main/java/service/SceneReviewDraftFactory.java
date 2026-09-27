@@ -153,7 +153,21 @@ public final class SceneReviewDraftFactory {
                 List.of(),
                 List.of(),
                 movieSelection,
-                List.of(movieSelection.reason())
+                List.of(movieSelection.reason()),
+                new SceneReviewDisplayData(
+                        scene.getFiles().isEmpty()
+                                ? null : scene.getFiles().getFirst().getId(),
+                        scene.getFiles().isEmpty()
+                                ? null : scene.getFiles().getFirst().getPath(),
+                        scene.getPublisher().getName(),
+                        scene.getSeries() == null
+                                ? "" : scene.getSeries().getTitle(),
+                        movieSelection.selectedMovie()
+                                .map(Movie::getTitle).orElse(""),
+                        scene.getPerformers().stream()
+                                .map(Performer::getMainName)
+                                .toList()
+                )
         );
     }
 
@@ -201,7 +215,8 @@ public final class SceneReviewDraftFactory {
                 editable.performerCandidates(),
                 unmatchedPerformers(editable.parsedFilename(), interpretation),
                 editable.originalMovieSelection(),
-                editable.warnings()
+                editable.warnings(),
+                editable.displayData()
         );
     }
 

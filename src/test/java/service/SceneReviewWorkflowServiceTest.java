@@ -191,6 +191,29 @@ class SceneReviewWorkflowServiceTest {
                 ),
                 () -> Assertions.assertFalse(
                         assignmentRepository.isUnassigned(MEDIA_ID)
+                ),
+                () -> Assertions.assertEquals(
+                        mediaPath,
+                        mediaFileRepository.findById(MEDIA_ID)
+                                .orElseThrow().getPath()
+                ),
+                () -> Assertions.assertTrue(Files.exists(mediaPath))
+        );
+    }
+
+    @Test
+    @DisplayName("New reviewed Scene creation requires exactly one media")
+    void newSceneCreationRequiresExactlyOneMedia() {
+        Assertions.assertAll(
+                () -> Assertions.assertThrows(
+                        IllegalArgumentException.class,
+                        () -> service.save(createRequestWithMediaIds(List.of()))
+                ),
+                () -> Assertions.assertThrows(
+                        IllegalArgumentException.class,
+                        () -> service.save(createRequestWithMediaIds(
+                                List.of(MEDIA_ID, SECOND_MEDIA_ID)
+                        ))
                 )
         );
     }
@@ -358,11 +381,30 @@ class SceneReviewWorkflowServiceTest {
     private SceneReviewSaveRequest createRequest(
             SceneReviewRenameChoice renameChoice) {
 
+        return createRequestWithMediaIds(
+                List.of(MEDIA_ID),
+                renameChoice
+        );
+    }
+
+    private SceneReviewSaveRequest createRequestWithMediaIds(
+            List<UUID> mediaIds) {
+
+        return createRequestWithMediaIds(
+                mediaIds,
+                SceneReviewRenameChoice.DO_NOT_RENAME
+        );
+    }
+
+    private SceneReviewSaveRequest createRequestWithMediaIds(
+            List<UUID> mediaIds,
+            SceneReviewRenameChoice renameChoice) {
+
         return new SceneReviewSaveRequest(
                 new SceneReviewDraft(
                         SceneReviewMode.CREATE_FROM_MEDIA,
                         null,
-                        List.of(MEDIA_ID),
+                        mediaIds,
                         "Scene Title",
                         LocalDate.of(2026, 1, 15),
                         null,

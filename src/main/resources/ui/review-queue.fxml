@@ -159,7 +159,7 @@
                                             <TableColumn fx:id="sceneReleaseDateColumn" text="Release date" prefWidth="110"/>
                                             <TableColumn fx:id="scenePublisherColumn" text="Publisher" prefWidth="130"/>
                                             <TableColumn fx:id="sceneSeriesColumn" text="Series" prefWidth="130"/>
-                                            <TableColumn fx:id="sceneMediaCountColumn" text="Media count" prefWidth="90"/>
+                                            <TableColumn fx:id="sceneFilenameColumn" text="Filename" prefWidth="220"/>
                                         </columns>
                                     </TableView>
                                 </VBox>

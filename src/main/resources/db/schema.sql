@@ -133,6 +133,8 @@ CREATE TABLE IF NOT EXISTS scene_media_file (
     scene_id TEXT NOT NULL,
     media_file_id TEXT NOT NULL,
     PRIMARY KEY (scene_id, media_file_id),
+    UNIQUE (scene_id),
+    UNIQUE (media_file_id),
     FOREIGN KEY (scene_id) REFERENCES scene(id) ON DELETE CASCADE,
     FOREIGN KEY (media_file_id) REFERENCES media_file(id) ON DELETE CASCADE
 );

@@ -143,6 +143,12 @@ public final class CatalogService {
             List<UUID> performerIds,
             List<UUID> mediaFileIds) throws SQLException {
 
+        if (mediaFileIds == null || mediaFileIds.size() != 1) {
+            throw new IllegalArgumentException(
+                    "Scene creation requires exactly one media file ID."
+            );
+        }
+
         final Publisher publisher =
                 findRequiredPublisher(publisherId);
         final Series series = findOptionalSeries(seriesId);

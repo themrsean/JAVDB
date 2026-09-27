@@ -17,7 +17,7 @@ class GuiApplicationFactoryTest {
     private static final String SCHEMA_VERSION_KEY =
             "schema_version";
     private static final String CURRENT_SCHEMA_VERSION =
-            "3";
+            "4";
     private static final int FIRST_PARAMETER_INDEX = 1;
     private static final int FIRST_RESULT_COLUMN_INDEX = 1;
 

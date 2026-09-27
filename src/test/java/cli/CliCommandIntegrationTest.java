@@ -148,11 +148,13 @@ class CliCommandIntegrationTest {
     void sceneWorkflowSupportsPerformerSearch() {
         final UUID publisherId = addPublisher();
         final UUID performerId = addPerformer();
+        final UUID mediaId = addMedia("scene-search.mp4");
         final UUID sceneId = UUID.fromString(run(
                 "scene", "add",
                 "--title", "Scene",
                 "--publisher", publisherId.toString(),
-                "--performer", performerId.toString()
+                "--performer", performerId.toString(),
+                "--media", mediaId.toString()
         ).output().trim());
 
         final TestConsole searchConsole = run(
@@ -210,11 +212,13 @@ class CliCommandIntegrationTest {
     void sceneVerificationSetAndListSupportTsvOutput() throws Exception {
         final UUID publisherId = addPublisher();
         final UUID performerId = addPerformer();
+        final UUID mediaId = addMedia("verify-scene.mp4");
         final UUID sceneId = UUID.fromString(run(
                 "scene", "add",
                 "--title", "Verify Me",
                 "--publisher", publisherId.toString(),
-                "--performer", performerId.toString()
+                "--performer", performerId.toString(),
+                "--media", mediaId.toString()
         ).output().trim());
 
         final TestConsole setConsole = run(
@@ -333,17 +337,21 @@ class CliCommandIntegrationTest {
     void seriesAndMovieCommandsPreserveMovieSceneOrder() {
         final UUID publisherId = addPublisher();
         final UUID performerId = addPerformer();
+        final UUID firstMediaId = addMedia("first-scene.mp4");
+        final UUID secondMediaId = addMedia("second-scene.mp4");
         final UUID firstSceneId = UUID.fromString(run(
                 "scene", "add",
                 "--title", "First",
                 "--publisher", publisherId.toString(),
-                "--performer", performerId.toString()
+                "--performer", performerId.toString(),
+                "--media", firstMediaId.toString()
         ).output().trim());
         final UUID secondSceneId = UUID.fromString(run(
                 "scene", "add",
                 "--title", "Second",
                 "--publisher", publisherId.toString(),
-                "--performer", performerId.toString()
+                "--performer", performerId.toString(),
+                "--media", secondMediaId.toString()
         ).output().trim());
         final UUID seriesId = UUID.fromString(run(
                 "series", "add",
@@ -375,10 +383,12 @@ class CliCommandIntegrationTest {
     @Test
     @DisplayName("Unknown related IDs produce nonzero status")
     void unknownRelatedIdsProduceNonzeroStatus() {
+        final UUID mediaId = addMedia("unknown-related.mp4");
         final TestConsole console = run(
                 "scene", "add",
                 "--title", "Scene",
-                "--publisher", UUID.randomUUID().toString()
+                "--publisher", UUID.randomUUID().toString(),
+                "--media", mediaId.toString()
         );
 
         Assertions.assertAll(
@@ -536,14 +546,16 @@ class CliCommandIntegrationTest {
     }
 
     @Test
-    @DisplayName("Unassigned media can be listed and assigned to a scene")
-    void unassignedMediaCanBeListedAndAssignedToScene() {
+    @DisplayName("A Scene with media rejects a second media attachment")
+    void sceneWithMediaRejectsSecondMediaAttachment() {
         final UUID publisherId = addPublisher();
-        final UUID mediaId = addMedia("unassigned-one.mp4");
+        final UUID mediaId = addMedia("assigned-one.mp4");
+        final UUID secondMediaId = addMedia("unassigned-two.mp4");
         final UUID sceneId = UUID.fromString(run(
                 "scene", "add",
                 "--title", "Existing Scene",
-                "--publisher", publisherId.toString()
+                "--publisher", publisherId.toString(),
+                "--media", mediaId.toString()
         ).output().trim());
 
         final TestConsole listConsole = run(
@@ -553,7 +565,7 @@ class CliCommandIntegrationTest {
         final TestConsole attachConsole = run(
                 "scene", "attach-media",
                 "--scene", sceneId.toString(),
-                "--media", mediaId.toString()
+                "--media", secondMediaId.toString()
         );
         final TestConsole assignmentConsole = run(
                 "media", "assignment",
@@ -563,9 +575,12 @@ class CliCommandIntegrationTest {
 
         Assertions.assertAll(
                 () -> Assertions.assertTrue(listConsole.output().contains(
+                        secondMediaId.toString()
+                )),
+                () -> Assertions.assertFalse(listConsole.output().contains(
                         mediaId.toString()
                 )),
-                () -> Assertions.assertEquals(SUCCESS_STATUS,
+                () -> Assertions.assertNotEquals(SUCCESS_STATUS,
                         attachConsole.result().exitStatus()),
                 () -> Assertions.assertTrue(assignmentConsole.output()
                         .contains("SCENE")),

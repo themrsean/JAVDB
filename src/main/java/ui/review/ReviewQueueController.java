@@ -1,6 +1,8 @@
 package ui.review;
 
 import javafx.beans.binding.Bindings;
+import javafx.beans.property.ObjectProperty;
+import javafx.beans.property.SimpleObjectProperty;
 import javafx.fxml.FXML;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
@@ -73,7 +75,10 @@ public final class ReviewQueueController {
     private final Path databasePath;
     private boolean restoringSelection;
     private boolean synchronizingStatusFilter;
+    private boolean restoringReviewTab;
     private String selectedPublisherDisplayName = "";
+    private final ObjectProperty<ReviewDetailState> activeReviewDetail =
+            new SimpleObjectProperty<>(ReviewDetailState.empty());
 
     @FXML
     private TextField pathFilterField;
@@ -170,6 +175,10 @@ public final class ReviewQueueController {
     @FXML
     private TabPane reviewTabs;
     @FXML
+    private Tab unassignedMediaTab;
+    @FXML
+    private Tab unverifiedScenesTab;
+    @FXML
     private TextField titleEditorField;
     @FXML
     private TextField releaseDateEditorField;
@@ -236,7 +245,7 @@ public final class ReviewQueueController {
     @FXML
     private TableColumn<SceneReviewQueueItem, String> sceneSeriesColumn;
     @FXML
-    private TableColumn<SceneReviewQueueItem, Integer> sceneMediaCountColumn;
+    private TableColumn<SceneReviewQueueItem, String> sceneFilenameColumn;
     @FXML
     private Tab mediaLibraryTab;
     @FXML
@@ -474,8 +483,8 @@ public final class ReviewQueueController {
                 RecordTableCellValues.string(SceneReviewQueueItem::publisherName));
         sceneSeriesColumn.setCellValueFactory(
                 RecordTableCellValues.string(SceneReviewQueueItem::seriesTitle));
-        sceneMediaCountColumn.setCellValueFactory(
-                RecordTableCellValues.object(SceneReviewQueueItem::mediaCount));
+        sceneFilenameColumn.setCellValueFactory(
+                RecordTableCellValues.string(SceneReviewQueueItem::filename));
         queueTable.setItems(viewModel.rows());
         unverifiedScenesTable.setItems(sceneQueueViewModel.rows());
         queueTable.getSelectionModel()
@@ -484,8 +493,15 @@ public final class ReviewQueueController {
                         selectUnassignedRow(oldValue, newValue));
         viewModel.selectedRow().addListener((observable, oldValue, newValue) ->
                 synchronizeQueueTableSelection(newValue));
-        viewModel.selectedDetails().addListener((observable, oldValue, newValue) ->
-                loadEditorDraft(newValue));
+        viewModel.selectedDetails().addListener((observable, oldValue, newValue) -> {
+            if (unassignedMediaTab.equals(
+                    reviewTabs.getSelectionModel().getSelectedItem())) {
+                activeReviewDetail.set(
+                        ReviewDetailState.fromUnassigned(newValue)
+                );
+                loadEditorDraft(newValue);
+            }
+        });
         unverifiedScenesTable.getSelectionModel()
                 .selectedItemProperty()
                 .addListener((observable, oldValue, newValue) ->
@@ -649,23 +665,26 @@ public final class ReviewQueueController {
 
     private void bindDetails() {
         detailsPlaceholderLabel.visibleProperty().bind(
-                viewModel.selectedDetails().isNull()
+                Bindings.createBooleanBinding(
+                        () -> activeReviewDetail.get().emptyMedia(),
+                        activeReviewDetail
+                )
         );
         mediaIdLabel.textProperty().bind(Bindings.createStringBinding(
-                () -> detailsText(""),
-                viewModel.selectedDetails()
+                () -> activeReviewDetail.get().mediaIdText(),
+                activeReviewDetail
         ));
         fullPathLabel.textProperty().bind(Bindings.createStringBinding(
-                () -> detailsText("path"),
-                viewModel.selectedDetails()
+                () -> activeReviewDetail.get().mediaPathText(),
+                activeReviewDetail
         ));
         parseStatusLabel.textProperty().bind(Bindings.createStringBinding(
-                () -> detailsText("parse"),
-                viewModel.selectedDetails()
+                () -> activeReviewDetail.get().parseStatus(),
+                activeReviewDetail
         ));
         matchStatusLabel.textProperty().bind(Bindings.createStringBinding(
-                () -> detailsText("match"),
-                viewModel.selectedDetails()
+                () -> activeReviewDetail.get().matchStatus(),
+                activeReviewDetail
         ));
         canonicalStatusLabel.textProperty().bind(Bindings.createStringBinding(
                 () -> editorViewModel.previewStatusProperty().get(),
@@ -716,6 +735,10 @@ public final class ReviewQueueController {
         applyInterpretationButton.setOnAction(event -> applyInterpretation());
         editorViewModel.lastSaveResultProperty().addListener(
                 (observable, oldValue, newValue) -> handleSaveResult(newValue)
+        );
+        editorViewModel.displayDataProperty().addListener(
+                (observable, oldValue, newValue) ->
+                        hydrateExistingSceneDisplay(newValue)
         );
     }
 
@@ -819,9 +842,10 @@ public final class ReviewQueueController {
                 mediaLibraryViewModel.detailErrorMessageProperty());
 
         bindMediaLibraryDetails();
-        updateDetailsPane(reviewTabs.getSelectionModel().getSelectedItem());
+        activateReviewTab(reviewTabs.getSelectionModel().getSelectedItem());
         reviewTabs.getSelectionModel().selectedItemProperty().addListener(
-                (observable, oldValue, newValue) -> updateDetailsPane(newValue));
+                (observable, oldValue, newValue) ->
+                        changeReviewTab(oldValue, newValue));
     }
 
     private void libraryAction(Runnable action) {
@@ -923,6 +947,38 @@ public final class ReviewQueueController {
         mediaLibraryDetailsPane.setManaged(librarySelected);
     }
 
+    private void changeReviewTab(Tab oldTab, Tab newTab) {
+        if (!restoringReviewTab) {
+            if (navigationGuard.mayNavigateAway(
+                    editorViewModel.dirtyProperty().get())) {
+                activateReviewTab(newTab);
+            } else {
+                restoringReviewTab = true;
+                reviewTabs.getSelectionModel().select(oldTab);
+                restoringReviewTab = false;
+            }
+        }
+    }
+
+    private void activateReviewTab(Tab selectedTab) {
+        updateDetailsPane(selectedTab);
+        if (unassignedMediaTab.equals(selectedTab)) {
+            final ReviewDetails details = viewModel.selectedDetails().get();
+            activeReviewDetail.set(ReviewDetailState.fromUnassigned(details));
+            loadEditorDraft(details);
+        } else if (unverifiedScenesTab.equals(selectedTab)) {
+            final SceneReviewQueueItem item = unverifiedScenesTable
+                    .getSelectionModel().getSelectedItem();
+            activeReviewDetail.set(
+                    ReviewDetailState.fromExistingScene(item)
+            );
+            loadExistingSceneDraft(item);
+        } else {
+            activeReviewDetail.set(ReviewDetailState.empty());
+            clearEditorSelectionState();
+        }
+    }
+
     private void installKeyboardShortcutsWhenReady() {
         titleEditorField.sceneProperty().addListener(
                 (observable, oldValue, newValue) -> {
@@ -1008,10 +1064,14 @@ public final class ReviewQueueController {
             SceneReviewQueueItem oldValue,
             SceneReviewQueueItem newValue) {
 
-        if (!restoringSelection) {
+        if (!restoringSelection && unverifiedScenesTab.equals(
+                reviewTabs.getSelectionModel().getSelectedItem())) {
             if (navigationGuard.mayNavigateAway(
                     editorViewModel.dirtyProperty().get()
             )) {
+                activeReviewDetail.set(
+                        ReviewDetailState.fromExistingScene(newValue)
+                );
                 loadExistingSceneDraft(newValue);
             } else {
                 restoreSceneSelection(oldValue);
@@ -1157,6 +1217,21 @@ public final class ReviewQueueController {
             );
             selectedPublisherDisplayName = item.publisherName() == null
                     ? "" : item.publisherName();
+        }
+    }
+
+    private void hydrateExistingSceneDisplay(
+            service.SceneReviewDisplayData display) {
+
+        if (display != null && unverifiedScenesTab.equals(
+                reviewTabs.getSelectionModel().getSelectedItem())) {
+            final ReviewEditorFieldState fields =
+                    ReviewEditorFieldState.from(display);
+            populateAutocompleteFields(fields);
+            editorViewModel.setSelectedPerformerDisplayNames(
+                    fields.performers()
+            );
+            refreshSelectedPerformers();
         }
     }
 
@@ -1453,26 +1528,4 @@ public final class ReviewQueueController {
         }
     }
 
-    private String detailsText(String field) {
-        final ReviewDetails details = viewModel.selectedDetails().get();
-        String text = "";
-
-        if (details != null) {
-            if ("path".equals(field)) {
-                text = details.path().toString();
-            } else if ("parse".equals(field)) {
-                text = details.parseStatus().name();
-            } else if ("match".equals(field)) {
-                text = details.matchStatus().name();
-            } else if ("canonical".equals(field)) {
-                text = details.canonicalRename().status();
-            } else if ("filename".equals(field)) {
-                text = details.canonicalRename().proposedFilename();
-            } else {
-                text = details.mediaId().toString();
-            }
-        }
-
-        return text;
-    }
 }

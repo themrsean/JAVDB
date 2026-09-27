@@ -79,6 +79,14 @@ class CatalogServiceCliExtensionTest {
                 List.of(),
                 PerformerCategory.ACTOR
         );
+        final MediaFile mediaFile = service.createMediaFile(
+                MEDIA_PATH,
+                FILE_SIZE,
+                null,
+                WIDTH,
+                HEIGHT,
+                null
+        );
         final Scene scene = service.createScene(
                 SCENE_TITLE,
                 null,
@@ -88,7 +96,7 @@ class CatalogServiceCliExtensionTest {
                 null,
                 null,
                 List.of(performer.getId()),
-                List.of()
+                List.of(mediaFile.getId())
         );
 
         Assertions.assertAll(
@@ -202,6 +210,22 @@ class CatalogServiceCliExtensionTest {
                 List.of(),
                 PerformerCategory.ACTOR
         );
+        final MediaFile firstSceneMedia = service.createMediaFile(
+                Path.of("/video/first-scene.mp4"),
+                FILE_SIZE,
+                null,
+                WIDTH,
+                HEIGHT,
+                null
+        );
+        final MediaFile secondSceneMedia = service.createMediaFile(
+                Path.of("/video/second-scene.mp4"),
+                FILE_SIZE,
+                null,
+                WIDTH,
+                HEIGHT,
+                null
+        );
         final Scene firstScene = service.createScene(
                 "Zulu Scene",
                 null,
@@ -211,7 +235,7 @@ class CatalogServiceCliExtensionTest {
                 null,
                 null,
                 List.of(performer.getId()),
-                List.of()
+                List.of(firstSceneMedia.getId())
         );
         final Scene secondScene = service.createScene(
                 "Alpha Scene",
@@ -222,7 +246,7 @@ class CatalogServiceCliExtensionTest {
                 null,
                 null,
                 List.of(performer.getId()),
-                List.of()
+                List.of(secondSceneMedia.getId())
         );
         final MediaFile mediaFile = service.createMediaFile(
                 MEDIA_PATH,

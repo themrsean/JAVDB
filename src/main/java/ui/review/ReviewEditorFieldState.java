@@ -5,6 +5,7 @@ import service.FilenameInterpretation;
 import service.FilenameInterpretationConsensus;
 import service.MatchSource;
 import service.ReviewDetails;
+import service.SceneReviewDisplayData;
 
 import java.util.List;
 
@@ -41,6 +42,15 @@ record ReviewEditorFieldState(
                         .filter(match -> match.id() != null)
                         .map(EntityMatch::name)
                         .toList()
+        );
+    }
+
+    static ReviewEditorFieldState from(SceneReviewDisplayData display) {
+        return new ReviewEditorFieldState(
+                display.publisherName(),
+                display.seriesTitle(),
+                display.movieTitle(),
+                display.performerNames()
         );
     }
 

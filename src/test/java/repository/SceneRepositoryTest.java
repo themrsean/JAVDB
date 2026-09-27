@@ -294,12 +294,12 @@ class SceneRepositoryTest {
     }
 
     @Test
-    @DisplayName("Insert stores all media-file relationships")
-    void insertStoresAllMediaFileRelationships() throws Exception {
+    @DisplayName("Insert stores the single media-file relationship")
+    void insertStoresSingleMediaFileRelationship() throws Exception {
         repository.insert(createScene());
 
         Assertions.assertEquals(
-                2,
+                1,
                 countBySceneId(COUNT_SCENE_FILES_SQL)
         );
     }
@@ -330,12 +330,69 @@ class SceneRepositoryTest {
                         .toList()
         );
         Assertions.assertEquals(
-                List.of(SECOND_MEDIA_FILE_ID, MEDIA_FILE_ID),
+                List.of(MEDIA_FILE_ID),
                 found.getFiles()
                         .stream()
                         .map(MediaFile::getId)
                         .toList()
         );
+    }
+
+    @Test
+    @DisplayName("Scene permits zero or one media and rejects more than one")
+    void sceneEnforcesMaximumOneMedia() {
+        final Scene noMedia = new Scene(
+                SCENE_ID, TITLE, publisher, null, null, null, null, null,
+                List.of(), List.of()
+        );
+        final Scene oneMedia = new Scene(
+                SECOND_SCENE_ID, SECOND_TITLE, publisher, null, null, null,
+                null, null, List.of(), List.of(mediaFile)
+        );
+
+        Assertions.assertAll(
+                () -> Assertions.assertTrue(noMedia.getFiles().isEmpty()),
+                () -> Assertions.assertEquals(List.of(mediaFile),
+                        oneMedia.getFiles()),
+                () -> Assertions.assertThrows(
+                        IllegalArgumentException.class,
+                        () -> new Scene(
+                                UUID.randomUUID(), "Invalid", publisher,
+                                null, null, null, null, null, List.of(),
+                                List.of(mediaFile, secondMediaFile)
+                        )
+                )
+        );
+    }
+
+    @Test
+    @DisplayName("Repository loads a diagnostic scene with no media")
+    void repositoryLoadsSceneWithNoMedia() throws Exception {
+        repository.insert(new Scene(
+                SCENE_ID, TITLE, publisher, null, null, null, null, null,
+                List.of(), List.of()
+        ));
+
+        Assertions.assertTrue(repository.findById(SCENE_ID).orElseThrow()
+                .getFiles().isEmpty());
+    }
+
+    @Test
+    @DisplayName("Database rejects assigning one media to a second scene")
+    void databaseRejectsMediaAssignedToSecondScene() throws Exception {
+        repository.insert(createScene());
+        final Scene second = new Scene(
+                SECOND_SCENE_ID, SECOND_TITLE, publisher, null, null, null,
+                null, null, List.of(), List.of(mediaFile)
+        );
+
+        Assertions.assertThrows(SQLException.class,
+                () -> repository.insert(second));
+
+        Assertions.assertTrue(repository.findById(SECOND_SCENE_ID).isEmpty());
+        Assertions.assertEquals(List.of(MEDIA_FILE_ID),
+                repository.findById(SCENE_ID).orElseThrow().getFiles().stream()
+                        .map(MediaFile::getId).toList());
     }
 
     @Test
@@ -617,7 +674,7 @@ class SceneRepositoryTest {
                 SEASON,
                 EPISODE,
                 List.of(performer, secondPerformer),
-                List.of(mediaFile, secondMediaFile)
+                List.of(mediaFile)
         );
     }
 

@@ -10,6 +10,7 @@ import service.FilenameInterpretation;
 import service.FilenameMatchStatus;
 import service.MatchSource;
 import service.ReviewDetails;
+import service.SceneReviewDisplayData;
 
 import java.nio.file.Path;
 import java.util.List;
@@ -91,6 +92,31 @@ class ReviewEditorFieldStateTest {
                 () -> Assertions.assertTrue(
                         ReviewEditorFieldState.alternativeText(movie)
                                 .contains("Movie=Unknown Name (unresolved)"))
+        );
+    }
+
+    @Test
+    @DisplayName("Existing Scene display uses authoritative catalog names")
+    void existingSceneDisplayUsesAuthoritativeCatalogNames() {
+        final ReviewEditorFieldState state = ReviewEditorFieldState.from(
+                new SceneReviewDisplayData(
+                        UUID.randomUUID(),
+                        Path.of("/video/aspirations-2.mp4"),
+                        "Brazzers",
+                        "BigWetButts",
+                        "Asspirations 2",
+                        List.of("Abella Danger")
+                )
+        );
+
+        Assertions.assertAll(
+                () -> Assertions.assertEquals("Brazzers", state.publisher()),
+                () -> Assertions.assertEquals("BigWetButts", state.series()),
+                () -> Assertions.assertEquals("Asspirations 2", state.movie()),
+                () -> Assertions.assertEquals(
+                        List.of("Abella Danger"),
+                        state.performers()
+                )
         );
     }
 

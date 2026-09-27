@@ -2036,6 +2036,9 @@ public final class CommandLineInterface {
                 consoleIO.print("Performer UUIDs comma-separated: ");
                 final List<UUID> performerIds =
                         parseCommaSeparatedUuids(consoleIO.readLine());
+                consoleIO.print("Media UUID: ");
+                final UUID mediaId =
+                        UUID.fromString(consoleIO.readLine().trim());
                 final Scene scene = catalogService.createScene(
                         title,
                         null,
@@ -2045,7 +2048,7 @@ public final class CommandLineInterface {
                         null,
                         null,
                         performerIds,
-                        List.of()
+                        List.of(mediaId)
                 );
                 consoleIO.println("Created scene " + scene.getId());
             } else if ("13".equals(choice)) {

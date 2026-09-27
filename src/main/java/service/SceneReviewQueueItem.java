@@ -3,6 +3,7 @@ package service;
 import model.VerificationStatus;
 
 import java.time.LocalDate;
+import java.nio.file.Path;
 import java.util.UUID;
 
 public record SceneReviewQueueItem(
@@ -12,5 +13,7 @@ public record SceneReviewQueueItem(
         LocalDate releaseDate,
         String publisherName,
         String seriesTitle,
-        int mediaCount) {
+        UUID mediaId,
+        Path mediaPath,
+        String filename) {
 }

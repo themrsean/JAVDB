@@ -13,7 +13,7 @@ import java.util.List;
 import java.util.Objects;
 
 public final class DatabaseBackupVerifier {
-    public static final String SUPPORTED_SCHEMA_VERSION = "3";
+    public static final String SUPPORTED_SCHEMA_VERSION = "4";
 
     private static final String JDBC_PREFIX = "jdbc:sqlite:";
     private static final String OK = "ok";

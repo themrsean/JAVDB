@@ -396,6 +396,7 @@ class CatalogServiceTest {
                 PUBLISHER_NAME,
                 List.of()
         );
+        final MediaFile mediaFile = createMediaFile();
 
         final Scene scene = service.createScene(
                 SCENE_TITLE,
@@ -406,7 +407,7 @@ class CatalogServiceTest {
                 " ",
                 "",
                 null,
-                null
+                List.of(mediaFile.getId())
         );
 
         final Scene found = sceneRepository.findById(scene.getId())
@@ -417,7 +418,10 @@ class CatalogServiceTest {
         Assertions.assertNull(found.getSeason());
         Assertions.assertNull(found.getEpisode());
         Assertions.assertTrue(found.getPerformers().isEmpty());
-        Assertions.assertTrue(found.getFiles().isEmpty());
+        Assertions.assertEquals(
+                List.of(mediaFile.getId()),
+                found.getFiles().stream().map(MediaFile::getId).toList()
+        );
     }
 
     @Test
@@ -446,7 +450,7 @@ class CatalogServiceTest {
                                 null,
                                 null,
                                 List.of(),
-                                List.of()
+                                List.of(mediaFile.getId())
                         )
                 ),
                 () -> Assertions.assertThrows(
@@ -460,7 +464,7 @@ class CatalogServiceTest {
                                 null,
                                 null,
                                 List.of(),
-                                List.of()
+                                List.of(mediaFile.getId())
                         )
                 ),
                 () -> Assertions.assertThrows(
@@ -474,7 +478,7 @@ class CatalogServiceTest {
                                 null,
                                 null,
                                 List.of(),
-                                List.of()
+                                List.of(mediaFile.getId())
                         )
                 ),
                 () -> Assertions.assertThrows(
@@ -488,7 +492,7 @@ class CatalogServiceTest {
                                 null,
                                 null,
                                 List.of(UNKNOWN_ID),
-                                List.of()
+                                List.of(mediaFile.getId())
                         )
                 ),
                 () -> Assertions.assertThrows(
@@ -516,7 +520,7 @@ class CatalogServiceTest {
                                 null,
                                 null,
                                 Arrays.asList(performer.getId(), null),
-                                List.of()
+                                List.of(mediaFile.getId())
                         )
                 ),
                 () -> Assertions.assertThrows(
@@ -530,7 +534,7 @@ class CatalogServiceTest {
                                 null,
                                 null,
                                 List.of(performer.getId(), performer.getId()),
-                                List.of()
+                                List.of(mediaFile.getId())
                         )
                 ),
                 () -> Assertions.assertThrows(
@@ -545,6 +549,20 @@ class CatalogServiceTest {
                                 null,
                                 List.of(),
                                 List.of(mediaFile.getId(), mediaFile.getId())
+                        )
+                ),
+                () -> Assertions.assertThrows(
+                        IllegalArgumentException.class,
+                        () -> service.createScene(
+                                SCENE_TITLE,
+                                null,
+                                null,
+                                publisher.getId(),
+                                null,
+                                null,
+                                null,
+                                List.of(),
+                                List.of()
                         )
                 )
         );
@@ -564,6 +582,7 @@ class CatalogServiceTest {
                 List.of(),
                 PerformerCategory.ACTOR
         );
+        final MediaFile mediaFile = createMediaFile();
 
         final Scene scene = service.createScene(
                 SCENE_TITLE,
@@ -574,7 +593,7 @@ class CatalogServiceTest {
                 null,
                 null,
                 List.of(performer.getId()),
-                List.of()
+                List.of(mediaFile.getId())
         );
 
         Assertions.assertEquals(
@@ -626,6 +645,8 @@ class CatalogServiceTest {
                 List.of(),
                 PerformerCategory.ACTOR
         );
+        final MediaFile zMediaFile = createMediaFile();
+        final MediaFile aMediaFile = createMediaFile();
 
         final Scene zScene = service.createScene(
                 "Zulu Scene",
@@ -636,7 +657,7 @@ class CatalogServiceTest {
                 null,
                 null,
                 List.of(performer.getId()),
-                List.of()
+                List.of(zMediaFile.getId())
         );
         final Scene aScene = service.createScene(
                 "Alpha Scene",
@@ -647,7 +668,7 @@ class CatalogServiceTest {
                 null,
                 null,
                 List.of(performer.getId()),
-                List.of()
+                List.of(aMediaFile.getId())
         );
 
         Assertions.assertEquals(
@@ -673,6 +694,7 @@ class CatalogServiceTest {
                 List.of(),
                 PerformerCategory.ACTOR
         );
+        final MediaFile mediaFile = createMediaFile();
         final Scene scene = service.createScene(
                 SCENE_TITLE,
                 null,
@@ -682,7 +704,7 @@ class CatalogServiceTest {
                 null,
                 null,
                 List.of(performer.getId()),
-                List.of()
+                List.of(mediaFile.getId())
         );
 
         final Scene verified = service.markSceneVerified(scene.getId());
@@ -719,6 +741,8 @@ class CatalogServiceTest {
                 PUBLISHER_NAME,
                 List.of()
         );
+        final MediaFile zMediaFile = createMediaFile();
+        final MediaFile aMediaFile = createMediaFile();
         final Scene zScene = service.createScene(
                 "Zulu",
                 null,
@@ -728,7 +752,7 @@ class CatalogServiceTest {
                 null,
                 null,
                 List.of(),
-                List.of()
+                List.of(zMediaFile.getId())
         );
         final Scene aScene = service.createScene(
                 "Alpha",
@@ -739,7 +763,7 @@ class CatalogServiceTest {
                 null,
                 null,
                 List.of(),
-                List.of()
+                List.of(aMediaFile.getId())
         );
         service.markSceneNeedsReview(zScene.getId());
         service.markSceneNeedsReview(aScene.getId());
@@ -780,6 +804,7 @@ class CatalogServiceTest {
                 List.of("Second"),
                 PerformerCategory.ACTRESS
         );
+        final MediaFile mediaFile = createMediaFile();
 
         final Scene scene = service.createScene(
                 " Workflow Scene ",
@@ -790,7 +815,7 @@ class CatalogServiceTest {
                 null,
                 null,
                 List.of(firstPerformer.getId(), secondPerformer.getId()),
-                List.of()
+                List.of(mediaFile.getId())
         );
 
         final Scene found = service.findScenesByPerformer(

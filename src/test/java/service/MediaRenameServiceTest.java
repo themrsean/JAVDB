@@ -215,25 +215,21 @@ class MediaRenameServiceTest {
     }
 
     @Test
-    @DisplayName("Ambiguous scene assignment requires explicit scene")
-    void ambiguousSceneAssignmentRequiresExplicitScene() throws Exception {
-        sceneRepository.insert(scene(SECOND_SCENE_ID, "Second Scene", MEDIA_ID));
-
-        final MediaRenamePreview preview = service.preview(
-                new MediaRenameRequest(MEDIA_ID, null, null)
-        );
-
-        Assertions.assertEquals(
-                MediaRenameStatus.INVALID_ASSIGNMENT,
-                preview.status()
+    @DisplayName("Database rejects assigning media to a second scene")
+    void databaseRejectsMediaAssignedToSecondScene() {
+        Assertions.assertThrows(
+                SQLException.class,
+                () -> sceneRepository.insert(scene(
+                        SECOND_SCENE_ID,
+                        "Second Scene",
+                        MEDIA_ID
+                ))
         );
     }
 
     @Test
     @DisplayName("Explicit valid scene selection is used")
     void explicitValidSceneSelectionIsUsed() throws Exception {
-        sceneRepository.insert(scene(SECOND_SCENE_ID, "Second Scene", MEDIA_ID));
-
         final MediaRenamePreview preview = service.preview(
                 new MediaRenameRequest(MEDIA_ID, SCENE_ID, null)
         );
@@ -531,22 +527,14 @@ class MediaRenameServiceTest {
     }
 
     @Test
-    @DisplayName("Scene media preview returns media in deterministic path order")
-    void sceneMediaPreviewReturnsMediaInDeterministicPathOrder()
+    @DisplayName("Scene media preview returns the Scene's single media")
+    void sceneMediaPreviewReturnsSingleMedia()
             throws Exception {
-
-        final UUID secondMediaId =
-                UUID.fromString("12121212-eeee-1212-eeee-121212121212");
-        final Path secondPath = temporaryDirectory.resolve("another.mkv");
-        Files.writeString(secondPath, "video");
-        mediaFileRepository.insert(mediaFile(secondMediaId, secondPath));
-        replaceSceneMedia(SCENE_ID, List.of(MEDIA_ID, secondMediaId));
-
         final List<MediaRenamePreview> previews =
                 service.previewSceneMedia(SCENE_ID, null);
 
         Assertions.assertEquals(
-                List.of(secondMediaId, MEDIA_ID),
+                List.of(MEDIA_ID),
                 previews.stream()
                         .map(MediaRenamePreview::mediaId)
                         .toList()
@@ -577,77 +565,37 @@ class MediaRenameServiceTest {
     }
 
     @Test
-    @DisplayName("Scene media rename renames every ready file")
-    void sceneMediaRenameRenamesEveryReadyFile() throws Exception {
-        final UUID secondMediaId =
-                UUID.fromString("34343434-eeee-3434-eeee-343434343434");
-        final Path secondPath = temporaryDirectory.resolve("another.mkv");
-        final Path secondProposedPath = temporaryDirectory.resolve(
-                "(26.01.15) Publisher - Scene Title - Alice.mkv"
-        );
-        Files.writeString(secondPath, "video");
-        mediaFileRepository.insert(mediaFile(secondMediaId, secondPath));
-        replaceSceneMedia(SCENE_ID, List.of(MEDIA_ID, secondMediaId));
-
+    @DisplayName("Scene media rename renames its single ready file")
+    void sceneMediaRenameRenamesSingleReadyFile() throws Exception {
         final MediaRenameBatchResult result =
                 service.renameSceneMedia(SCENE_ID, null, false, false);
 
         Assertions.assertAll(
                 () -> Assertions.assertEquals(
-                        List.of(
-                                MediaRenameStatus.RENAMED,
-                                MediaRenameStatus.RENAMED
-                        ),
+                        List.of(MediaRenameStatus.RENAMED),
                         result.results().stream()
                                 .map(MediaRenameResult::status)
                                 .toList()
                 ),
-                () -> Assertions.assertTrue(Files.exists(proposedPath)),
-                () -> Assertions.assertTrue(Files.exists(secondProposedPath))
+                () -> Assertions.assertTrue(Files.exists(proposedPath))
         );
     }
 
     @Test
-    @DisplayName("Scene media duplicate extension collision requires review")
-    void sceneMediaDuplicateExtensionCollisionRequiresReview()
-            throws Exception {
-
-        final UUID secondMediaId =
-                UUID.fromString("56565656-eeee-5656-eeee-565656565656");
-        final Path secondPath = temporaryDirectory.resolve("another.mp4");
-        Files.writeString(secondPath, "video");
-        mediaFileRepository.insert(mediaFile(secondMediaId, secondPath));
-        replaceSceneMedia(SCENE_ID, List.of(MEDIA_ID, secondMediaId));
-
-        final List<MediaRenamePreview> previews =
-                service.previewSceneMedia(SCENE_ID, null);
-
-        Assertions.assertEquals(
-                List.of(
-                        MediaRenameStatus.REVIEW_REQUIRED,
-                        MediaRenameStatus.REVIEW_REQUIRED
-                ),
-                previews.stream()
-                        .map(MediaRenamePreview::status)
-                        .toList()
-        );
-    }
-
-    @Test
-    @DisplayName("Scene media fail-fast stops after first failed file")
-    void sceneMediaFailFastStopsAfterFirstFailedFile() throws Exception {
-        final UUID secondMediaId =
-                UUID.fromString("78787878-eeee-7878-eeee-787878787878");
-        final Path secondPath = temporaryDirectory.resolve("zzz.mkv");
-        Files.writeString(secondPath, "video");
-        mediaFileRepository.insert(mediaFile(secondMediaId, secondPath));
-        replaceSceneMedia(SCENE_ID, List.of(MEDIA_ID, secondMediaId));
+    @DisplayName("Scene media fail-fast reports its single failed file")
+    void sceneMediaFailFastReportsSingleFailedFile() throws Exception {
         Files.delete(mediaPath);
 
         final MediaRenameBatchResult result =
                 service.renameSceneMedia(SCENE_ID, null, false, true);
 
-        Assertions.assertEquals(1, result.results().size());
+        Assertions.assertAll(
+                () -> Assertions.assertEquals(1, result.results().size()),
+                () -> Assertions.assertEquals(
+                        MediaRenameStatus.SOURCE_MISSING,
+                        result.results().getFirst().status()
+                )
+        );
     }
 
     private MediaFile mediaFile(UUID id, Path path) {
@@ -689,36 +637,6 @@ class MediaRenameServiceTest {
                 List.of(sceneRepository.findById(sceneId).orElseThrow()),
                 false,
                 List.of()
-        ));
-    }
-
-    private void replaceSceneMedia(UUID sceneId, List<UUID> mediaIds)
-            throws Exception {
-
-        final Scene existingScene = sceneRepository.findById(sceneId)
-                .orElseThrow();
-        final List<MediaFile> files = mediaIds.stream()
-                .map(mediaId -> {
-                    try {
-                        return mediaFileRepository.findById(mediaId)
-                                .orElseThrow();
-                    } catch (SQLException exception) {
-                        throw new IllegalStateException(exception);
-                    }
-                })
-                .toList();
-        sceneRepository.update(new Scene(
-                existingScene.getId(),
-                existingScene.getTitle(),
-                existingScene.getPublisher(),
-                existingScene.getReleaseDate(),
-                existingScene.getCode(),
-                existingScene.getSeries(),
-                existingScene.getSeason(),
-                existingScene.getEpisode(),
-                existingScene.getPerformers(),
-                files,
-                existingScene.getVerificationStatus()
         ));
     }
 

@@ -73,7 +73,7 @@ class SceneReviewDraftFactoryTest {
                 movieRepository,
                 new OriginalMovieSelector(movieRepository)
         );
-        publisher = new Publisher(PUBLISHER_ID, "Publisher", List.of());
+        publisher = new Publisher(PUBLISHER_ID, "Brazzers", List.of());
         performer = new Performer(
                 PERFORMER_ID,
                 "Alice",
@@ -403,7 +403,7 @@ class SceneReviewDraftFactoryTest {
         sceneRepository.insert(scene);
         movieRepository.insert(new Movie(
                 MOVIE_ID,
-                "Movie",
+                "Asspirations 2",
                 LocalDate.of(2020, 1, 1),
                 publisher,
                 List.of(scene),
@@ -431,6 +431,26 @@ class SceneReviewDraftFactoryTest {
                 () -> Assertions.assertEquals(
                         List.of(MEDIA_ID),
                         editable.draft().mediaFileIds()
+                ),
+                () -> Assertions.assertEquals(
+                        MEDIA_ID,
+                        editable.displayData().mediaId()
+                ),
+                () -> Assertions.assertEquals(
+                        mediaFile(MEDIA_ID).getPath(),
+                        editable.displayData().mediaPath()
+                ),
+                () -> Assertions.assertEquals(
+                        "Brazzers",
+                        editable.displayData().publisherName()
+                ),
+                () -> Assertions.assertEquals(
+                        "Asspirations 2",
+                        editable.displayData().movieTitle()
+                ),
+                () -> Assertions.assertEquals(
+                        List.of("Alice"),
+                        editable.displayData().performerNames()
                 )
         );
     }

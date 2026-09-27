@@ -15,7 +15,24 @@ public record EditableSceneReviewDraft(
         List<String> performerCandidates,
         List<String> unmatchedPerformers,
         MovieSelectionResult originalMovieSelection,
-        List<String> warnings) {
+        List<String> warnings,
+        SceneReviewDisplayData displayData) {
+
+    public EditableSceneReviewDraft(
+            SceneReviewDraft draft,
+            Path mediaPath,
+            ParsedMediaFilename parsedFilename,
+            FilenameMatchStatus matchStatus,
+            List<FilenameInterpretation> alternatives,
+            List<String> performerCandidates,
+            List<String> unmatchedPerformers,
+            MovieSelectionResult originalMovieSelection,
+            List<String> warnings) {
+
+        this(draft, mediaPath, parsedFilename, matchStatus, alternatives,
+                performerCandidates, unmatchedPerformers,
+                originalMovieSelection, warnings, null);
+    }
 
     public EditableSceneReviewDraft {
         Objects.requireNonNull(draft, "Scene review draft must not be null");

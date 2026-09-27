@@ -178,14 +178,24 @@ class MediaAssignmentServiceTest {
     }
 
     @Test
-    @DisplayName("Existing scene media remain attached")
-    void existingSceneMediaRemainAttached() throws Exception {
+    @DisplayName("A scene rejects a second media attachment")
+    void sceneRejectsSecondMediaAttachment() throws Exception {
         service.attachToScene(MEDIA_ONE_ID, SCENE_ID);
-        final Scene updated = service.attachToScene(MEDIA_TWO_ID, SCENE_ID);
 
-        Assertions.assertEquals(
-                List.of(MEDIA_ONE_ID, MEDIA_TWO_ID),
-                updated.getFiles().stream().map(MediaFile::getId).toList()
+        Assertions.assertThrows(
+                IllegalArgumentException.class,
+                () -> service.attachToScene(MEDIA_TWO_ID, SCENE_ID)
+        );
+
+        final Scene unchanged = sceneRepository.findById(SCENE_ID).orElseThrow();
+        Assertions.assertAll(
+                () -> Assertions.assertEquals(
+                        List.of(MEDIA_ONE_ID),
+                        unchanged.getFiles().stream().map(MediaFile::getId).toList()
+                ),
+                () -> Assertions.assertTrue(
+                        assignmentRepository.isUnassigned(MEDIA_TWO_ID)
+                )
         );
     }
 

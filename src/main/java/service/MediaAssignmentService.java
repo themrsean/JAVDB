@@ -97,6 +97,11 @@ public final class MediaAssignmentService {
         )).orElseThrow(() -> new IllegalArgumentException(
                 "Scene ID does not reference an existing scene: " + sceneId
         ));
+        if (!scene.getFiles().isEmpty()) {
+            throw new IllegalArgumentException(
+                    "Scene already has a media file."
+            );
+        }
         ensureUnassigned(mediaFileId);
 
         final List<MediaFile> mediaFiles = new ArrayList<>(scene.getFiles());

@@ -15,6 +15,7 @@ import service.FilenameInterpretation;
 import service.FilenameInterpretationConsensus;
 import service.MatchSource;
 import service.SceneReviewDraft;
+import service.SceneReviewDisplayData;
 import service.SceneReviewRenameChoice;
 import service.SceneReviewSaveRequest;
 import service.SceneReviewSaveResult;
@@ -78,6 +79,8 @@ public final class SceneReviewEditorViewModel {
             new SimpleBooleanProperty(false);
     private final BooleanProperty previewLoading = new SimpleBooleanProperty(false);
     private final ObjectProperty<SceneReviewSaveResult> lastSaveResult =
+            new SimpleObjectProperty<>();
+    private final ObjectProperty<SceneReviewDisplayData> displayData =
             new SimpleObjectProperty<>();
     private final StringProperty previewStatus = new SimpleStringProperty("");
     private final StringProperty previewCurrentFilename =
@@ -301,6 +304,7 @@ public final class SceneReviewEditorViewModel {
                 .stream()
                 .map(id -> new SelectedPerformer(id, id.toString()))
                 .toList());
+        displayData.set(draft.displayData());
         dirty.set(false);
         saveMessage.set("");
         lastSaveResult.set(null);
@@ -334,6 +338,7 @@ public final class SceneReviewEditorViewModel {
         selectedMovieId.set(null);
         explicitOriginalMovieOverrideId.set(null);
         selectedPerformers.clear();
+        displayData.set(null);
         previewStatus.set("");
         previewCurrentFilename.set("");
         previewProposedFilename.set("");
@@ -550,6 +555,10 @@ public final class SceneReviewEditorViewModel {
 
     public ObjectProperty<SceneReviewSaveResult> lastSaveResultProperty() {
         return lastSaveResult;
+    }
+
+    public ObjectProperty<SceneReviewDisplayData> displayDataProperty() {
+        return displayData;
     }
 
     private void submitSave(

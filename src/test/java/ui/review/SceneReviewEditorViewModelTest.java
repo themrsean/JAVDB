@@ -30,6 +30,8 @@ class SceneReviewEditorViewModelTest {
             UUID.fromString("11111111-dddd-1111-dddd-111111111111");
     private static final UUID SCENE_ID =
             UUID.fromString("22222222-dddd-2222-dddd-222222222222");
+    private static final UUID SECOND_SCENE_ID =
+            UUID.fromString("22222222-eeee-2222-eeee-222222222222");
     private static final UUID PUBLISHER_ID =
             UUID.fromString("33333333-dddd-3333-dddd-333333333333");
     private static final UUID SERIES_ID =
@@ -121,6 +123,65 @@ class SceneReviewEditorViewModelTest {
                         viewModel.currentDraft().draft().mode()
                 ),
                 () -> Assertions.assertFalse(viewModel.dirtyProperty().get())
+        );
+    }
+
+    @Test
+    @DisplayName("A stale existing Scene load cannot replace a newer selection")
+    void staleExistingSceneLoadCannotReplaceNewerSelection() {
+        final QueuedExecutor background = new QueuedExecutor();
+        final SceneReviewEditorViewModel viewModel =
+                new SceneReviewEditorViewModel(
+                        new CapturingWorkflow(),
+                        new SceneIdDraftLoader(),
+                        background,
+                        Runnable::run
+                );
+
+        viewModel.loadExistingScene(SCENE_ID);
+        viewModel.loadExistingScene(SECOND_SCENE_ID);
+        Assertions.assertEquals(2, background.pendingCount());
+
+        background.runLast();
+        Assertions.assertEquals(
+                "Second Scene",
+                viewModel.titleProperty().get()
+        );
+
+        background.runFirst();
+        Assertions.assertEquals(
+                "Second Scene",
+                viewModel.titleProperty().get()
+        );
+    }
+
+    @Test
+    @DisplayName("Clearing a draft removes the previous canonical preview")
+    void clearingDraftRemovesPreviousCanonicalPreview() {
+        final SceneReviewEditorViewModel viewModel =
+                viewModel(new CapturingWorkflow());
+        viewModel.loadDraft(editableDraft("Scene A"));
+        Assertions.assertEquals(
+                "new.mp4",
+                viewModel.previewProposedFilenameProperty().get()
+        );
+
+        viewModel.clearDraft();
+
+        Assertions.assertAll(
+                () -> Assertions.assertNull(viewModel.currentDraft()),
+                () -> Assertions.assertEquals(
+                        "",
+                        viewModel.previewStatusProperty().get()
+                ),
+                () -> Assertions.assertEquals(
+                        "",
+                        viewModel.previewProposedFilenameProperty().get()
+                ),
+                () -> Assertions.assertEquals(
+                        "",
+                        viewModel.previewProposedPathProperty().get()
+                )
         );
     }
 
@@ -772,6 +833,66 @@ class SceneReviewEditorViewModelTest {
                     editable.unmatchedPerformers(),
                     editable.originalMovieSelection(),
                     editable.warnings()
+            );
+        }
+    }
+
+    private static final class SceneIdDraftLoader
+            implements SceneReviewDraftLoader {
+        @Override
+        public EditableSceneReviewDraft fromReviewDetails(
+                service.ReviewDetails details) {
+
+            return null;
+        }
+
+        @Override
+        public EditableSceneReviewDraft fromExistingScene(UUID sceneId) {
+            return existingDraft(
+                    sceneId,
+                    sceneId.equals(SECOND_SCENE_ID)
+                            ? "Second Scene" : "First Scene"
+            );
+        }
+
+        @Override
+        public EditableSceneReviewDraft applyInterpretation(
+                EditableSceneReviewDraft editable,
+                FilenameInterpretation interpretation) {
+
+            return editable;
+        }
+
+        private EditableSceneReviewDraft existingDraft(
+                UUID sceneId,
+                String title) {
+
+            return new EditableSceneReviewDraft(
+                    new SceneReviewDraft(
+                            SceneReviewMode.EDIT_EXISTING_SCENE,
+                            sceneId,
+                            List.of(MEDIA_ID),
+                            title,
+                            null,
+                            null,
+                            null,
+                            null,
+                            PUBLISHER_ID,
+                            null,
+                            null,
+                            null,
+                            List.of(),
+                            VerificationStatus.NEEDS_REVIEW,
+                            List.of()
+                    ),
+                    Path.of("/tmp/" + sceneId + ".mp4"),
+                    null,
+                    FilenameMatchStatus.READY,
+                    List.of(),
+                    List.of(),
+                    List.of(),
+                    null,
+                    List.of()
             );
         }
     }

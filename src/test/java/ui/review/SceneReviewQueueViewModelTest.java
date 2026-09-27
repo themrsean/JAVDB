@@ -75,7 +75,9 @@ class SceneReviewQueueViewModelTest {
                 null,
                 "Publisher",
                 "",
-                0
+                null,
+                null,
+                "(no media associated)"
         );
     }
 

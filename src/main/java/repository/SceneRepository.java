@@ -154,6 +154,7 @@ public final class SceneRepository {
 
     public void insert(Scene scene) throws SQLException {
         Objects.requireNonNull(scene, "Scene must not be null");
+        validateFiles(scene);
 
         try (Connection connection = openConnection()) {
             connection.setAutoCommit(false);
@@ -238,6 +239,7 @@ public final class SceneRepository {
 
     public void update(Scene scene) throws SQLException {
         Objects.requireNonNull(scene, "Scene must not be null");
+        validateFiles(scene);
 
         try (Connection connection = openConnection()) {
             connection.setAutoCommit(false);
@@ -292,6 +294,14 @@ public final class SceneRepository {
             throw new SQLException(
                     "Could not open database connection.",
                     exception
+            );
+        }
+    }
+
+    private void validateFiles(Scene scene) {
+        if (scene.getFiles().size() > 1) {
+            throw new IllegalArgumentException(
+                    "Scene may contain at most one media file."
             );
         }
     }

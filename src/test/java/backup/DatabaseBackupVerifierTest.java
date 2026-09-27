@@ -36,7 +36,7 @@ class DatabaseBackupVerifierTest {
                         BackupVerificationStatus.VALID,
                         result.status()
                 ),
-                () -> Assertions.assertEquals("3", result.schemaVersion()),
+                () -> Assertions.assertEquals("4", result.schemaVersion()),
                 () -> Assertions.assertTrue(result.fileSize() > 0L)
         );
     }

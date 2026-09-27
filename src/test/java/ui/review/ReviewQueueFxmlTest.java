@@ -101,7 +101,7 @@ class ReviewQueueFxmlTest {
                 "sceneReleaseDateColumn",
                 "scenePublisherColumn",
                 "sceneSeriesColumn",
-                "sceneMediaCountColumn",
+                "sceneFilenameColumn",
                 "titleEditorField",
                 "releaseDateEditorField",
                 "codeEditorField",

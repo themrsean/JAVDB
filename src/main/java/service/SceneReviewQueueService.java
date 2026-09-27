@@ -1,6 +1,7 @@
 package service;
 
 import model.Scene;
+import model.MediaFile;
 import model.VerificationStatus;
 import repository.SceneRepository;
 
@@ -52,6 +53,8 @@ public final class SceneReviewQueueService {
                 limit,
                 0
         )) {
+            final MediaFile media = scene.getFiles().isEmpty()
+                    ? null : scene.getFiles().getFirst();
             items.add(new SceneReviewQueueItem(
                     scene.getId(),
                     scene.getTitle(),
@@ -61,7 +64,11 @@ public final class SceneReviewQueueService {
                     scene.getSeries() == null
                             ? ""
                             : scene.getSeries().getTitle(),
-                    scene.getFiles().size()
+                    media == null ? null : media.getId(),
+                    media == null ? null : media.getPath(),
+                    media == null
+                            ? "(no media associated)"
+                            : media.getPath().getFileName().toString()
             ));
         }
     }

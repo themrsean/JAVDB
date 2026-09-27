@@ -11,6 +11,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.List;
 import java.util.Set;
 
 class SchemaManagerTest {
@@ -23,8 +24,10 @@ class SchemaManagerTest {
             "1";
     private static final String VERSION_TWO =
             "2";
-    private static final String CURRENT_SCHEMA_VERSION =
+    private static final String VERSION_THREE =
             "3";
+    private static final String CURRENT_SCHEMA_VERSION =
+            "4";
     private static final String UNSUPPORTED_SCHEMA_VERSION =
             "999";
 
@@ -183,6 +186,48 @@ class SchemaManagerTest {
     }
 
     @Test
+    @DisplayName("Fresh schema enforces one media per scene")
+    void freshSchemaEnforcesOneMediaPerScene() throws Exception {
+        final DatabaseManager databaseManager = createDatabaseManager();
+        new SchemaManager(databaseManager).initialize();
+
+        try (Connection connection = databaseManager.openConnection();
+             Statement statement = connection.createStatement()) {
+            insertSceneMediaFixture(statement);
+            statement.execute("""
+                    INSERT INTO scene_media_file(scene_id, media_file_id)
+                    VALUES ('scene-one', 'media-one')
+                    """);
+
+            Assertions.assertThrows(SQLException.class, () -> statement.execute("""
+                    INSERT INTO scene_media_file(scene_id, media_file_id)
+                    VALUES ('scene-one', 'media-two')
+                    """));
+        }
+    }
+
+    @Test
+    @DisplayName("Fresh schema prevents media belonging to two scenes")
+    void freshSchemaPreventsMediaBelongingToTwoScenes() throws Exception {
+        final DatabaseManager databaseManager = createDatabaseManager();
+        new SchemaManager(databaseManager).initialize();
+
+        try (Connection connection = databaseManager.openConnection();
+             Statement statement = connection.createStatement()) {
+            insertSceneMediaFixture(statement);
+            statement.execute("""
+                    INSERT INTO scene_media_file(scene_id, media_file_id)
+                    VALUES ('scene-one', 'media-one')
+                    """);
+
+            Assertions.assertThrows(SQLException.class, () -> statement.execute("""
+                    INSERT INTO scene_media_file(scene_id, media_file_id)
+                    VALUES ('scene-two', 'media-one')
+                    """));
+        }
+    }
+
+    @Test
     @DisplayName("Version one database migrates scene verification status")
     void versionOneDatabaseMigratesSceneVerificationStatus() throws Exception {
         final DatabaseManager databaseManager = createDatabaseManager();
@@ -255,6 +300,49 @@ class SchemaManagerTest {
                     )
             );
         }
+    }
+
+    @Test
+    @DisplayName("Valid version three scene media migrates to version four")
+    void validVersionThreeSceneMediaMigratesToVersionFour() throws Exception {
+        final DatabaseManager databaseManager = createDatabaseManager();
+        createVersionThreeDatabase(databaseManager,
+                List.of("scene-one|media-one", "scene-two|media-two"));
+
+        new SchemaManager(databaseManager).initialize();
+
+        try (Connection connection = databaseManager.openConnection();
+             Statement statement = connection.createStatement()) {
+            Assertions.assertEquals(CURRENT_SCHEMA_VERSION,
+                    readMetadataValue(connection, SCHEMA_VERSION_KEY));
+            Assertions.assertThrows(SQLException.class, () -> statement.execute("""
+                    INSERT INTO scene_media_file(scene_id, media_file_id)
+                    VALUES ('scene-one', 'media-three')
+                    """));
+            Assertions.assertThrows(SQLException.class, () -> statement.execute("""
+                    INSERT INTO scene_media_file(scene_id, media_file_id)
+                    VALUES ('scene-three', 'media-one')
+                    """));
+        }
+    }
+
+    @Test
+    @DisplayName("Version three migration rejects scene with multiple media")
+    void versionThreeMigrationRejectsSceneWithMultipleMedia() throws Exception {
+        assertFailedVersionThreeMigration(
+                List.of("scene-one|media-one", "scene-one|media-two"),
+                "Scene has more than one media association"
+        );
+    }
+
+    @Test
+    @DisplayName("Version three migration rejects media assigned to multiple scenes")
+    void versionThreeMigrationRejectsMediaAssignedToMultipleScenes()
+            throws Exception {
+        assertFailedVersionThreeMigration(
+                List.of("scene-one|media-one", "scene-two|media-one"),
+                "Media file belongs to more than one Scene"
+        );
     }
 
     @Test
@@ -750,5 +838,83 @@ class SchemaManagerTest {
                     )
                     """);
         }
+    }
+
+    private void createVersionThreeDatabase(
+            DatabaseManager databaseManager,
+            List<String> associations) throws Exception {
+
+        try (Connection connection = databaseManager.openConnection();
+             Statement statement = connection.createStatement()) {
+            statement.execute("""
+                    CREATE TABLE app_metadata (
+                        metadata_key TEXT PRIMARY KEY,
+                        metadata_value TEXT NOT NULL
+                    )
+                    """);
+            statement.execute("""
+                    INSERT INTO app_metadata(metadata_key, metadata_value)
+                    VALUES ('schema_version', '3')
+                    """);
+            statement.execute("""
+                    CREATE TABLE scene_media_file (
+                        scene_id TEXT NOT NULL,
+                        media_file_id TEXT NOT NULL,
+                        PRIMARY KEY (scene_id, media_file_id)
+                    )
+                    """);
+            for (String association : associations) {
+                final String[] values = association.split("\\|");
+                statement.execute("INSERT INTO scene_media_file(scene_id, "
+                        + "media_file_id) VALUES ('" + values[0] + "', '"
+                        + values[1] + "')");
+            }
+        }
+    }
+
+    private void assertFailedVersionThreeMigration(
+            List<String> associations,
+            String expectedMessage) throws Exception {
+
+        final DatabaseManager databaseManager = createDatabaseManager();
+        createVersionThreeDatabase(databaseManager, associations);
+
+        final SQLException exception = Assertions.assertThrows(
+                SQLException.class,
+                () -> new SchemaManager(databaseManager).initialize()
+        );
+
+        try (Connection connection = databaseManager.openConnection();
+             Statement statement = connection.createStatement();
+             ResultSet resultSet = statement.executeQuery(
+                     "SELECT COUNT(*) FROM scene_media_file")) {
+            Assertions.assertAll(
+                    () -> Assertions.assertTrue(exception.getMessage()
+                            .contains(expectedMessage)),
+                    () -> Assertions.assertEquals(VERSION_THREE,
+                            readMetadataValue(connection, SCHEMA_VERSION_KEY)),
+                    () -> Assertions.assertTrue(resultSet.next()),
+                    () -> Assertions.assertEquals(associations.size(),
+                            resultSet.getInt(1))
+            );
+        }
+    }
+
+    private void insertSceneMediaFixture(Statement statement)
+            throws SQLException {
+        statement.execute("""
+                INSERT INTO publisher(id, name)
+                VALUES ('publisher-id', 'Publisher')
+                """);
+        statement.execute("""
+                INSERT INTO scene(id, title, publisher_id)
+                VALUES ('scene-one', 'One', 'publisher-id'),
+                       ('scene-two', 'Two', 'publisher-id')
+                """);
+        statement.execute("""
+                INSERT INTO media_file(id, path)
+                VALUES ('media-one', '/tmp/one.mp4'),
+                       ('media-two', '/tmp/two.mp4')
+                """);
     }
 }

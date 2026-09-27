@@ -125,7 +125,8 @@ class MediaLibraryRepositoryTest {
     private void insertCatalogFixtures() throws Exception {
         execute("INSERT INTO publisher(id, name) VALUES ('p', 'Publisher')");
         execute("INSERT INTO scene(id, title, publisher_id)"
-                + " VALUES ('s', 'Scene', 'p')");
+                + " VALUES ('s', 'Scene', 'p'),"
+                + " ('s2', 'Second Scene', 'p')");
         execute("INSERT INTO movie(id, title, publisher_id)"
                 + " VALUES ('m', 'Movie', 'p')");
         insertMedia(ALPHA, "Alpha.mp4", 1920, 1080, 1_000L);
@@ -134,7 +135,7 @@ class MediaLibraryRepositoryTest {
         insertMedia(DELTA, "nested/delta.mp4", 3840, 2160, 4_000L);
         execute("INSERT INTO scene_media_file VALUES ('s', '" + BETA + "')");
         execute("INSERT INTO movie_media_file VALUES ('m', '" + GAMMA + "')");
-        execute("INSERT INTO scene_media_file VALUES ('s', '" + DELTA + "')");
+        execute("INSERT INTO scene_media_file VALUES ('s2', '" + DELTA + "')");
         execute("INSERT INTO movie_media_file VALUES ('m', '" + DELTA + "')");
     }
 

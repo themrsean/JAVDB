@@ -173,10 +173,16 @@ public class Scene {
     }
 
     public void setFiles(List<MediaFile> files) {
-        this.files = List.copyOf(Objects.requireNonNull(
+        final List<MediaFile> requestedFiles = List.copyOf(Objects.requireNonNull(
                 files,
                 "Scene files must not be null"
         ));
+        if (requestedFiles.size() > 1) {
+            throw new IllegalArgumentException(
+                    "Scene may contain at most one media file."
+            );
+        }
+        this.files = requestedFiles;
     }
 
     public VerificationStatus getVerificationStatus() {

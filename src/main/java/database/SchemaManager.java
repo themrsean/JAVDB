@@ -76,11 +76,36 @@ public final class SchemaManager {
                 last_failed_count INTEGER NOT NULL DEFAULT 0
             )
             """;
+    private static final String FIND_SCENE_WITH_MULTIPLE_MEDIA_SQL = """
+            SELECT scene_id, COUNT(*)
+            FROM scene_media_file
+            GROUP BY scene_id
+            HAVING COUNT(*) > 1
+            LIMIT 1
+            """;
+    private static final String FIND_MEDIA_WITH_MULTIPLE_SCENES_SQL = """
+            SELECT media_file_id, COUNT(*)
+            FROM scene_media_file
+            GROUP BY media_file_id
+            HAVING COUNT(*) > 1
+            LIMIT 1
+            """;
+    private static final String CREATE_UNIQUE_SCENE_MEDIA_SCENE_INDEX_SQL = """
+            CREATE UNIQUE INDEX IF NOT EXISTS
+                ux_scene_media_file_scene_id
+            ON scene_media_file(scene_id)
+            """;
+    private static final String CREATE_UNIQUE_SCENE_MEDIA_MEDIA_INDEX_SQL = """
+            CREATE UNIQUE INDEX IF NOT EXISTS
+                ux_scene_media_file_media_file_id
+            ON scene_media_file(media_file_id)
+            """;
 
     private static final String SCHEMA_VERSION_KEY = "schema_version";
     private static final String VERSION_ONE = "1";
     private static final String VERSION_TWO = "2";
-    private static final String CURRENT_SCHEMA_VERSION = "3";
+    private static final String VERSION_THREE = "3";
+    private static final String CURRENT_SCHEMA_VERSION = "4";
 
     private static final int FIRST_PARAMETER_INDEX = 1;
     private static final int SECOND_PARAMETER_INDEX = 2;
@@ -180,8 +205,12 @@ public final class SchemaManager {
         } else if (VERSION_ONE.equals(existingVersion.get())) {
             migrateFromVersionOneToTwo(connection);
             migrateFromVersionTwoToThree(connection);
+            migrateFromVersionThreeToFour(connection);
         } else if (VERSION_TWO.equals(existingVersion.get())) {
             migrateFromVersionTwoToThree(connection);
+            migrateFromVersionThreeToFour(connection);
+        } else if (VERSION_THREE.equals(existingVersion.get())) {
+            migrateFromVersionThreeToFour(connection);
         } else if (!CURRENT_SCHEMA_VERSION.equals(existingVersion.get())) {
             throw new SQLException(
                     "Unsupported database schema version: "
@@ -262,7 +291,45 @@ public final class SchemaManager {
             statement.execute(CREATE_MEDIA_LOCATION_TABLE_SQL);
         }
 
+        updateSchemaVersion(connection, VERSION_THREE);
+    }
+
+    private void migrateFromVersionThreeToFour(Connection connection)
+            throws SQLException {
+
+        rejectCardinalityViolation(
+                connection,
+                FIND_SCENE_WITH_MULTIPLE_MEDIA_SQL,
+                "Scene has more than one media association"
+        );
+        rejectCardinalityViolation(
+                connection,
+                FIND_MEDIA_WITH_MULTIPLE_SCENES_SQL,
+                "Media file belongs to more than one Scene"
+        );
+
+        try (Statement statement = connection.createStatement()) {
+            statement.execute(CREATE_UNIQUE_SCENE_MEDIA_SCENE_INDEX_SQL);
+            statement.execute(CREATE_UNIQUE_SCENE_MEDIA_MEDIA_INDEX_SQL);
+        }
+
         updateSchemaVersion(connection, CURRENT_SCHEMA_VERSION);
+    }
+
+    private void rejectCardinalityViolation(
+            Connection connection,
+            String sql,
+            String message) throws SQLException {
+
+        try (Statement statement = connection.createStatement();
+             ResultSet resultSet = statement.executeQuery(sql)) {
+            if (resultSet.next()) {
+                throw new SQLException(
+                        message + ": " + resultSet.getString(1)
+                                + " (associations=" + resultSet.getInt(2) + ")."
+                );
+            }
+        }
     }
 
     private void updateSchemaVersion(Connection connection, String version)

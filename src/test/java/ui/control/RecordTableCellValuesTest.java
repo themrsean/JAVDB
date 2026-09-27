@@ -46,7 +46,8 @@ class RecordTableCellValuesTest {
                 "1920x1080", "00:10", "10 MB", "2026-09-25", "Unassigned");
         final SceneReviewQueueItem scene = new SceneReviewQueueItem(UUID.randomUUID(),
                 "Scene", VerificationStatus.NEEDS_REVIEW,
-                LocalDate.of(2014, 7, 12), "Publisher", "Series", 3);
+                LocalDate.of(2014, 7, 12), "Publisher", "Series",
+                UUID.randomUUID(), Path.of("/media/scene.mp4"), "scene.mp4");
 
         Assertions.assertAll(
                 () -> Assertions.assertEquals("example.mp4", string(
@@ -57,8 +58,9 @@ class RecordTableCellValuesTest {
                         RecordTableCellValues.string(MediaLibraryRow::assignmentSummary), media)),
                 () -> Assertions.assertEquals("Scene", string(
                         RecordTableCellValues.string(SceneReviewQueueItem::title), scene)),
-                () -> Assertions.assertEquals(3, object(
-                        RecordTableCellValues.object(SceneReviewQueueItem::mediaCount), scene))
+                () -> Assertions.assertEquals("scene.mp4", string(
+                        RecordTableCellValues.string(
+                                SceneReviewQueueItem::filename), scene))
         );
     }
 

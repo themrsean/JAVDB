@@ -217,7 +217,15 @@ The same tab area also includes a read-only `Media Library` for scan review.
 
 Unassigned media rows are for files that need a new scene. Unverified scene rows
 are for existing scenes whose verification status is `UNVERIFIED` or
-`NEEDS_REVIEW`.
+`NEEDS_REVIEW`. The details pane follows the active queue tab: an Unverified
+Scene shows its own media UUID/path and authoritative saved editor metadata,
+including the selected original Movie title, rather than retaining filename
+interpretation data from a previously selected Unassigned Media row.
+
+A Scene represents at most one physical media file, and a media file cannot be
+attached to more than one Scene. Reviewed Scene creation always starts from
+exactly one media file. A zero-media Scene remains loadable only as a diagnostic
+legacy/error state; it cannot be physically renamed from the review workflow.
 
 The queue supports database-backed filters for filename/path text, directory
 prefix, exact width, exact height, minimum width, and minimum height. Pagination
@@ -387,7 +395,12 @@ VERIFIED
 NEEDS_REVIEW
 ```
 
-Databases created with schema version 1 are migrated to the current schema and existing scenes default to `UNVERIFIED`.
+The current schema version is 4. Databases created with schema version 1 or 2
+are migrated through each intermediate version, and existing scenes default to
+`UNVERIFIED`. The version 3 to 4 migration adds unique Scene/media constraints.
+If legacy associations contain either multiple media files for one Scene or one
+media file attached to multiple Scenes, migration fails without deleting or
+choosing among those associations and leaves the recorded version at 3.
 
 Canonical media filenames use this structure, omitting absent optional fields:
 
